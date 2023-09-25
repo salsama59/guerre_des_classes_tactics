@@ -1,8 +1,8 @@
 #include <cstdlib>
-#include <SDL/SDL.h>
-#include <SDL/SDL_image.h>
-#include <SDL/SDL_ttf.h>
-#include <fmodex/fmod.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_mixer.h>
 #include <ft2build.h>
 #include <freetype/freetype.h>
 #include "Inventaire.h"
@@ -17,27 +17,50 @@ Inventaire::Inventaire(Jeu &j)
     largeur=640;
     hauteur=480;
     ecran=j.GetFen();
-    couleur= SDL_MapRGB(ecran->format, 180, 180, 180);
-    fenMenu = SDL_CreateRGBSurface(SDL_HWSURFACE, largeur, hauteur, 32, 0, 0, 0, 0);
+    //couleur= SDL_MapRGB(ecran->format, 180, 180, 180);
+    //fenMenu = SDL_CreateRGBSurface(SDL_HWSURFACE, largeur, hauteur, 32, 0, 0, 0, 0);
     positionMenu.x=0;
     positionMenu.y=0;
+    fenMenu = SDL_CreateTexture(ecran,
+                               SDL_PIXELFORMAT_ARGB8888,
+                               SDL_TEXTUREACCESS_STREAMING,
+                               largeur, hauteur);
     //Modification de la couleur du fond
-    SDL_FillRect(fenMenu, NULL, couleur);
-    FMOD_System_Create(&system);
-    FMOD_System_Init(system, 3, FMOD_INIT_NORMAL, NULL);
-    FMOD_System_CreateSound(system, "deplacement.mp3", FMOD_CREATESAMPLE, 0, &sonDeplacement);
-    FMOD_System_CreateSound(system, "validation.wav", FMOD_CREATESAMPLE, 0, &sonValidation);
-    FMOD_System_CreateSound(system, "annulation.wav", FMOD_CREATESAMPLE, 0, &sonAnnulation);
-    FMOD_System_GetChannel(system, 1, &channel);
+    SDL_SetRenderDrawColor(ecran, 180, 180, 180, 0xFF );
+    SDL_RenderCopy(ecran, fenMenu, NULL, &positionMenu);
+    SDL_RenderClear(ecran);
+    //SDL_FillRect(fenMenu, NULL, couleur);
+
+    SDL_AudioSpec spec;
+    spec.freq = MIX_DEFAULT_FREQUENCY;
+    spec.format = MIX_DEFAULT_FORMAT;
+    spec.channels = MIX_DEFAULT_CHANNELS;
+    int channelNumber = 4;
+    if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 15) < 0) {
+        SDL_Log("Couldn't open audio: %s\n", SDL_GetError());
+        exit(2);
+    } else {
+        Mix_QuerySpec(&spec.freq, &spec.format, &channelNumber);
+        SDL_Log("Opened audio at %d Hz %d bit%s %s audio buffer\n", spec.freq,
+            (spec.format&0xFF),
+            (SDL_AUDIO_ISFLOAT(spec.format) ? " (float)" : ""),
+            (spec.channels > 2) ? "surround" : (spec.channels > 1) ? "stereo" : "mono");
+    }
+
+     /* Set the music volume */
+    Mix_VolumeMusic(MIX_MAX_VOLUME);
+
+    Mix_Music *music = NULL;
+    sonDeplacement = Mix_LoadWAV("deplacement.mp3");
+    sonValidation = Mix_LoadWAV("validation.wav");
+    sonAnnulation = Mix_LoadWAV("annulation.wav");
 }
 
 Inventaire:: ~Inventaire()
 {
-    FMOD_System_Close(system);
-    FMOD_System_Release(system);
-    FMOD_Sound_Release(sonDeplacement);
-    FMOD_Sound_Release(sonAnnulation);
-    FMOD_Sound_Release(sonValidation);
+    Mix_FreeChunk(sonDeplacement);
+    Mix_FreeChunk(sonValidation);
+    Mix_FreeChunk(sonAnnulation);
 }
 
 void Inventaire::AffichageInventaire()
@@ -55,14 +78,22 @@ void Inventaire::AffichageInventaire()
     couleurCarac = {255, 255, 255};
     //TTF_SetFontStyle(police, TTF_STYLE_BOLD | TTF_STYLE_UNDERLINE | TTF_STYLE_ITALIC);
 
-    couleurCursseur= SDL_MapRGB(ecran->format, 255, 255, 36);
+    //couleurCursseur= SDL_MapRGB(ecran->format, 255, 255, 36);
     positionCursseur.w=185;
     positionCursseur.h=35;
     positionCursseur.x=0;
     positionCursseur.y=0;
-    cursseur= SDL_CreateRGBSurface(SDL_HWSURFACE, positionCursseur.w, positionCursseur.h, 32, 0, 0, 0, 0);
-    SDL_FillRect(cursseur, NULL, couleurCursseur);
-    SDL_SetAlpha(cursseur, SDL_SRCALPHA, 70);
+    //cursseur= SDL_CreateRGBSurface(SDL_HWSURFACE, positionCursseur.w, positionCursseur.h, 32, 0, 0, 0, 0);
+    //SDL_FillRect(cursseur, NULL, couleurCursseur);
+    //SDL_SetAlpha(cursseur, SDL_SRCALPHA, 70);
+    cursseur = SDL_CreateTexture(ecran,
+                               SDL_PIXELFORMAT_ARGB8888,
+                               SDL_TEXTUREACCESS_STREAMING,
+                               positionCursseur.w, positionCursseur.h);
+    //Modification de la couleur du fond
+    SDL_SetRenderDrawColor(ecran, 255, 255, 36, 70 );
+    SDL_RenderCopy(ecran, cursseur, NULL, &positionCursseur);
+    SDL_RenderClear(ecran);
     while (cycle)
     {
         SDL_WaitEvent(&action);
@@ -95,10 +126,11 @@ void Inventaire::AffichageInventaire()
         }
 
         // Collage de la surface de menu sur l'écran
-        SDL_BlitSurface(fenMenu, NULL, ecran, &positionMenu);
+        //SDL_BlitSurface(fenMenu, NULL, ecran, &positionMenu);
 
-        SDL_BlitSurface(cursseur, NULL, ecran, &positionCursseur);
+        //SDL_BlitSurface(cursseur, NULL, ecran, &positionCursseur);
         //Mise à jour de l'affichage
-        SDL_Flip(ecran);
+        //SDL_Flip(ecran);
+        SDL_RenderPresent(ecran);
     }
 }

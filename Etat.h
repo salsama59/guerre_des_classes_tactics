@@ -5,8 +5,8 @@
 #include"Menu.h"
 #include"Constantes.h"
 #include <ft2build.h>
-#include <SDL/SDL_ttf.h>
-#include <fmodex/fmod.h>
+#include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_mixer.h>
 #include <string>
 #include <vector>
 
@@ -22,22 +22,22 @@ class Etat : public Menu
     char tableauCha[TAILLE_TAB_CONV];
     char tableauVit[TAILLE_TAB_CONV];
     char tableauMag[TAILLE_TAB_CONV];
-    SDL_Surface *texteStatFr[4];
-    SDL_Surface *texteStatDef[4];
-    SDL_Surface *texteStatMag[4];
-    SDL_Surface *texteStatVol[4];
-    SDL_Surface *texteStatVit[4];
-    SDL_Surface *texteStatPrc[4];
-    SDL_Surface *texteStatEsq[4];
-    SDL_Surface *texteStatCha[4];
-    SDL_Surface *texteStatNom[4];
-    SDL_Surface *texteStatNomArme[4];
-    SDL_Surface *texteStatNomArmureM0[4];
-    SDL_Surface *texteStatNomArmureM1[4];
-    SDL_Surface *texteStatNomArmureM2[4];
-    SDL_Surface *texteStatNomArmureM3[4];
-    SDL_Surface *texteEquipement[5];
-    SDL_Surface *texte[9];
+    SDL_Texture *texteStatFr[4];
+    SDL_Texture *texteStatDef[4];
+    SDL_Texture *texteStatMag[4];
+    SDL_Texture *texteStatVol[4];
+    SDL_Texture *texteStatVit[4];
+    SDL_Texture *texteStatPrc[4];
+    SDL_Texture *texteStatEsq[4];
+    SDL_Texture *texteStatCha[4];
+    SDL_Texture *texteStatNom[4];
+    SDL_Texture *texteStatNomArme[4];
+    SDL_Texture *texteStatNomArmureM0[4];
+    SDL_Texture *texteStatNomArmureM1[4];
+    SDL_Texture *texteStatNomArmureM2[4];
+    SDL_Texture *texteStatNomArmureM3[4];
+    SDL_Texture *texteEquipement[5];
+    SDL_Texture *texte[9];
     SDL_Surface *ligne;
     SDL_Surface *ligneHorizontale[4];
     const char *tableauEquip[5];
@@ -62,10 +62,11 @@ class Etat : public Menu
 
     public:
 
-    Etat(SDL_Surface *ecran);
+    Etat(SDL_Renderer *ecran);
     //~Etat();
-    void AffichageEtat(std::vector<Personnage*> equipe, SDL_Surface *ecran);
+    void AffichageEtat(std::vector<Personnage*> equipe, SDL_Renderer *ecran);
 
+    void DisplayMenuElements(std::vector<Personnage *> equipe, int memberId, SDL_Renderer *ecran);
 };
 
 #endif

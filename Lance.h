@@ -2,6 +2,7 @@
 #define DEF_LANCE
 
 #include <string>
+#include "Arme.h"
 
 class Lance : public Arme
 {

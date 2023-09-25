@@ -1,6 +1,6 @@
 #ifndef DEF_JEU
 #define DEF_JEU
-#include <SDL/SDL.h>
+#include <SDL2/SDL.h>
 #include "Arme.h"
 #include "Casque.h"
 #include "Cuirasse.h"
@@ -16,7 +16,9 @@ class Jeu
 {
     private:
 
-    SDL_Surface *fenetre;
+    //SDL_Surface *fenetre;
+    SDL_Window *fenetre;
+    SDL_Renderer *renderer;
     std::vector <Arme*> sauvegardeArmeInventaire;
     std::vector <Casque*> sauvegardeCasqueInventaire;
     std::vector <Cuirasse*> sauvegardeCuirasseInventaire;
@@ -30,7 +32,7 @@ class Jeu
 
     Jeu();
     void Jouer();
-    SDL_Surface *GetFen();
+    SDL_Renderer *GetFen();
     void SetArmeInventaire(std::vector<Arme*> nouvelInventaire);
     void SetCasqueInventaire(std::vector<Casque*> nouvelInventaire);
     void SetCuirasseInventaire(std::vector<Cuirasse*> nouvelInventaire);

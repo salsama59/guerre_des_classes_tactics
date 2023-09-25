@@ -1,23 +1,14 @@
 #include <cstdlib>
-#include <SDL/SDL.h>
-#include <SDL/SDL_image.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include "Jeu.h"
-#include "Personnage.h"
-#include "Moine.h"
-#include "ChevalierDragon.h"
-#include "Equipement.h"
-#include "Arme.h"
-#include "Lance.h"
-#include "Gant.h"
-#include "Potion.h"
-#include "Menu.h"
 #include <iostream>
 using namespace std;
 
 int main ( int argc, char** argv )
 {
     SDL_Event evenement;
-    SDL_Surface * ecranTitre;
+    SDL_Renderer *ecranTitre;
     //Création d'un objet de type jeu
     Jeu *afficheur= new Jeu();
     //On récupère le pointeur vers la fenêtre
@@ -51,9 +42,12 @@ int main ( int argc, char** argv )
 
         }
         //On met à jour la couleur de fond de l'écran titre
-        SDL_FillRect(ecranTitre, NULL, SDL_MapRGB(ecranTitre->format, 0, 0, 0));
+        SDL_SetRenderDrawColor(ecranTitre, 0, 0, 0, SDL_ALPHA_OPAQUE);
+        SDL_RenderClear(ecranTitre);
+        SDL_RenderPresent(ecranTitre);
+        //SDL_FillRect(ecranTitre, NULL, SDL_MapRGB(ecranTitre->format, 0, 0, 0));
         // Mise à jour de l'écran avec sa nouvelle couleur
-        SDL_Flip(ecranTitre);
+        //SDL_Flip(ecranTitre);
     }
     //On quitte la SDL
     SDL_Quit();

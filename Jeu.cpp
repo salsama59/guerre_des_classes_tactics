@@ -1,6 +1,6 @@
 #include <cstdlib>
-#include <SDL/SDL.h>
-#include <SDL/SDL_image.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include "Jeu.h"
 #include "Menu.h"
 #include "Moine.h"
@@ -14,7 +14,7 @@ using namespace std;
 
 Jeu::Jeu()
 {
-    if (SDL_Init(SDL_INIT_VIDEO) == -1) // Démarrage de la SDL. Si erreur :
+    if (SDL_Init(SDL_INIT_EVERYTHING) == -1) // Démarrage de la SDL. Si erreur :
     {
         fprintf(stderr, "Erreur d'initialisation de la SDL : %s\n", SDL_GetError()); // Écriture de l'erreur
         exit(EXIT_FAILURE); // On quitte le programme
@@ -24,17 +24,28 @@ Jeu::Jeu()
     atexit(SDL_Quit);
 
      // Ouverture de la fenêtre
-    fenetre=SDL_SetVideoMode(LARGEUR, HAUTEUR, NB_BITS_PAR_PIXEL, SDL_HWSURFACE | SDL_DOUBLEBUF);
+    fenetre = SDL_CreateWindow("Heroic fantasy version demo",
+                          SDL_WINDOWPOS_CENTERED,
+                          SDL_WINDOWPOS_CENTERED,
+                          LARGEUR, HAUTEUR,
+                          SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_SHOWN);
+    renderer = SDL_CreateRenderer(fenetre, -1, 0);
+
+    //"Heroic fantasy version demo", 
+    //fenetre=SDL_SetVideoMode(LARGEUR, HAUTEUR, NB_BITS_PAR_PIXEL, SDL_HWSURFACE | SDL_DOUBLEBUF);
 
     //Changer le titre de la fenêtre
-    SDL_WM_SetCaption("Heroic fantasy version demo", NULL);
+    //SDL_WM_SetCaption("Heroic fantasy version demo", NULL);
 
     //En cas d'erreur
-    if (!fenetre )
+    if (!fenetre ||  !renderer)
     {
         fprintf(stderr, "Impossible d'ouvrir une fenetre : %s\n", SDL_GetError());// Écriture de l'erreur
         exit(EXIT_FAILURE); // On quitte le programme
     }
+
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");  // make the scaled rendering look smoother.
+    SDL_RenderSetLogicalSize(renderer, LARGEUR, HAUTEUR);
 
     // On s'assure de la fermeture de la SDL
     atexit(SDL_Quit);
@@ -79,16 +90,35 @@ void Jeu::Jouer()
     sauvegardeEquipe.push_back(sherao);
     //sauvegardeEquipe.push_back(X);
     //sauvegardeEquipe.push_back(X1);
-    SDL_Surface *rectangle= NULL;
+    //SDL_Surface *rectangle= NULL;
     SDL_Rect position;
     position.x = (LARGEUR / 2) - (220 / 2);
     position.y = (HAUTEUR / 2) - (180 / 2);
+    position.w = 220;
+    position.h = 180;
+
     SDL_Event event;
     int boucle = 1;
     //Création de la surface rectangulaire
-    rectangle = SDL_CreateRGBSurface(SDL_HWSURFACE, 220, 180, NB_BITS_PAR_PIXEL, 0, 0, 0, 0);
+    //rectangle = SDL_CreateRGBSurface(SDL_HWSURFACE, 220, 180, NB_BITS_PAR_PIXEL, 0, 0, 0, 0);
+    /*SDL_Texture *sdlTexture = SDL_CreateTexture(renderer,
+                               SDL_PIXELFORMAT_ARGB8888,
+                               SDL_TEXTUREACCESS_STREAMING,
+                               LARGEUR, HAUTEUR);*/
     // Remplissage de la surface avec du vert
-    SDL_FillRect(rectangle, NULL, SDL_MapRGB(fenetre->format, 0, 255, 0));
+    //Uint32 *myPixels = malloc(220 * 180  * sizeof (Uint32);
+    //SDL_UpdateTexture(sdlTexture, NULL, myPixels, 220 * sizeof (Uint32));
+    SDL_SetRenderDrawColor( renderer, 255, 255, 255, SDL_ALPHA_OPAQUE );
+    SDL_RenderClear(renderer);
+    //SDL_SetTextureBlendMode(sdlTexture, SDL_BLENDMODE_NONE);
+    //SDL_SetTextureColorMod(sdlTexture, 255, 255, 255);
+    //SDL_SetTextureAlphaMod(sdlTexture, 255);
+    //SDL_RenderCopy(renderer, sdlTexture, NULL, NULL);
+    SDL_SetRenderDrawColor( renderer, 0, 255, 0, SDL_ALPHA_OPAQUE );
+    SDL_RenderFillRect(renderer, &position);
+    SDL_RenderPresent(renderer);
+    //SDL_RenderClear(renderer);
+    //SDL_FillRect(rectangle, NULL, SDL_MapRGB(fenetre->format, 0, 255, 0));
     while (boucle)
     {
         SDL_WaitEvent(&event);
@@ -104,12 +134,12 @@ void Jeu::Jouer()
             {
                 case SDLK_ESCAPE: //Appui sur la touche Echap, on ouvre le menu
                 x->EmissionSonMenu();
-                x->AffichageMenu(sauvegardeEquipe, sauvegardeGroupe, fenetre, sauvegardeArmeInventaire, sauvegardeCasqueInventaire, sauvegardeCuirasseInventaire, sauvegardeBouclierInventaire, sauvegardeJambiereInventaire, this->GetObjet());
+                x->AffichageMenu(sauvegardeEquipe, sauvegardeGroupe, renderer, sauvegardeArmeInventaire, sauvegardeCasqueInventaire, sauvegardeCuirasseInventaire, sauvegardeBouclierInventaire, sauvegardeJambiereInventaire, this->GetObjet());
                 break;
 
                 case SDLK_m: //Appui sur la touche Echap, on ouvre le menu
                 x->EmissionSonMenu();
-                x->AffichageMenu(sauvegardeEquipe, sauvegardeGroupe, fenetre, sauvegardeArmeInventaire, sauvegardeCasqueInventaire, sauvegardeCuirasseInventaire, sauvegardeBouclierInventaire, sauvegardeJambiereInventaire, this->GetObjet());
+                x->AffichageMenu(sauvegardeEquipe, sauvegardeGroupe, renderer, sauvegardeArmeInventaire, sauvegardeCasqueInventaire, sauvegardeCuirasseInventaire, sauvegardeBouclierInventaire, sauvegardeJambiereInventaire, this->GetObjet());
                 break;
 
                 case SDLK_SPACE:
@@ -118,20 +148,30 @@ void Jeu::Jouer()
             }
             break;
         }
+
+        SDL_SetRenderDrawColor( renderer, 255, 255, 255, SDL_ALPHA_OPAQUE );
+        SDL_RenderClear(renderer);
+        //SDL_SetTextureBlendMode(sdlTexture, SDL_BLENDMODE_NONE);
+        //SDL_SetTextureColorMod(sdlTexture, 255, 255, 255);
+        //SDL_SetTextureAlphaMod(sdlTexture, 255);
+        //SDL_RenderCopy(renderer, sdlTexture, NULL, NULL);
+        SDL_SetRenderDrawColor( renderer, 0, 255, 0, SDL_ALPHA_OPAQUE );
+        SDL_RenderFillRect(renderer, &position);
+        SDL_RenderPresent(renderer);
         //Modification de la couleur du fond
-        SDL_FillRect(fenetre, NULL, SDL_MapRGB(fenetre->format, 255, 255, 255));
+       // SDL_FillRect(fenetre, NULL, SDL_MapRGB(fenetre->format, 255, 255, 255));
         // Collage de la surface sur l'écran
-        SDL_BlitSurface(rectangle, NULL, fenetre, &position);
+        //SDL_BlitSurface(rectangle, NULL, fenetre, &position);
         // Mise à jour de l'écran avec sa nouvelle couleur
-        SDL_Flip(fenetre);
+        //SDL_Flip(fenetre);
     }
     // Libération de la surface
-    SDL_FreeSurface(rectangle);
+    //SDL_FreeSurface(rectangle);
 }
 
-SDL_Surface *Jeu::GetFen()
+SDL_Renderer *Jeu::GetFen()
 {
-    return fenetre;
+    return renderer;
 }
 
 void Jeu::SetArmeInventaire(std::vector<Arme*> nouvelInventaire)

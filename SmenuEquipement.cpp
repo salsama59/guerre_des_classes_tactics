@@ -1,9 +1,9 @@
 #include <cstdlib>
-#include <SDL/SDL.h>
-#include <SDL/SDL_image.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include <ft2build.h>
-#include <SDL/SDL_ttf.h>
-#include <fmodex/fmod.h>
+#include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_mixer.h>
 #include <freetype/freetype.h>
 #include "SmenuEquipement.h"
 #include "Jeu.h"
@@ -14,33 +14,55 @@
 #include <vector>
 using namespace std;
 
-SmenuEquipement::SmenuEquipement(SDL_Surface *ecran)
+SmenuEquipement::SmenuEquipement(SDL_Renderer *ecran)
 {
     largeur=LARGEUR;
     hauteur=HAUTEUR;
-    couleur= SDL_MapRGB(ecran->format, 180, 180, 180);
-    fenMenu = SDL_CreateRGBSurface(SDL_HWSURFACE, largeur, hauteur, NB_BITS_PAR_PIXEL, 0, 0, 0, 0);
+    //couleur= SDL_MapRGB(ecran->format, 180, 180, 180);
+    //fenMenu = SDL_CreateRGBSurface(SDL_HWSURFACE, largeur, hauteur, NB_BITS_PAR_PIXEL, 0, 0, 0, 0);
     positionMenu.x=0;
     positionMenu.y=0;
+    fenMenu = SDL_CreateTexture(ecran,
+                               SDL_PIXELFORMAT_ARGB8888,
+                               SDL_TEXTUREACCESS_STREAMING,
+                               largeur, hauteur);
+    
     //Modification de la couleur du fond
-    SDL_FillRect(fenMenu, NULL, couleur);
-    FMOD_System_Create(&system);
-    FMOD_System_Init(system, 3, FMOD_INIT_NORMAL, NULL);
-    FMOD_System_CreateSound(system, "deplacement.mp3", FMOD_CREATESAMPLE, 0, &sonDeplacement);
-    FMOD_System_CreateSound(system, "validation.wav", FMOD_CREATESAMPLE, 0, &sonValidation);
-    FMOD_System_CreateSound(system, "annulation.wav", FMOD_CREATESAMPLE, 0, &sonAnnulation);
-    FMOD_System_GetChannel(system, 1, &channel);
+    //SDL_FillRect(fenMenu, NULL, couleur);
+
+    SDL_AudioSpec spec;
+    spec.freq = MIX_DEFAULT_FREQUENCY;
+    spec.format = MIX_DEFAULT_FORMAT;
+    spec.channels = MIX_DEFAULT_CHANNELS;
+    int channelNumber = 4;
+    if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 15) < 0) {
+        SDL_Log("Couldn't open audio: %s\n", SDL_GetError());
+        exit(2);
+    } else {
+        Mix_QuerySpec(&spec.freq, &spec.format, &channelNumber);
+        SDL_Log("Opened audio at %d Hz %d bit%s %s audio buffer\n", spec.freq,
+            (spec.format&0xFF),
+            (SDL_AUDIO_ISFLOAT(spec.format) ? " (float)" : ""),
+            (spec.channels > 2) ? "surround" : (spec.channels > 1) ? "stereo" : "mono");
+    }
+
+     /* Set the music volume */
+    Mix_VolumeMusic(MIX_MAX_VOLUME);
+
+    Mix_Music *music = NULL;
+    sonDeplacement = Mix_LoadWAV("deplacement.mp3");
+    sonValidation = Mix_LoadWAV("validation.wav");
+    sonAnnulation = Mix_LoadWAV("annulation.wav");
 }
 
 SmenuEquipement:: ~SmenuEquipement()
 {
-    FMOD_System_Close(system);
-    FMOD_System_Release(system);
-    FMOD_Sound_Release(sonDeplacement);
-    FMOD_Sound_Release(sonValidation);
+    Mix_FreeChunk(sonDeplacement);
+    Mix_FreeChunk(sonValidation);
+    Mix_FreeChunk(sonAnnulation);
 }
 
-void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_Surface *ecran, std::vector<Arme*> armeInventaire, std::vector<Casque*> casqueInventaire, std::vector<Cuirasse*> cuirasseInventaire, std::vector<Bouclier*> bouclierInventaire, std::vector<Jambiere*> jambiereInventaire, Jeu *obj)
+void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_Renderer *ecran, std::vector<Arme*> armeInventaire, std::vector<Casque*> casqueInventaire, std::vector<Cuirasse*> cuirasseInventaire, std::vector<Bouclier*> bouclierInventaire, std::vector<Jambiere*> jambiereInventaire, Jeu *obj)
 {
     int cycle=1, init=0, i=0, t=0, j=0, taille=0, membre=0, nb=0, cpt=0, k=0, l=0, m=0, n=0, flag=0, bas=0, haut=0, gauche=0, droite=0, arm=0, cuir=0, bouc=0, jamb=0;
     taille=equipe.size();
@@ -65,108 +87,124 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
     police = TTF_OpenFont("arial.ttf", 30);
     couleurCarac = {255, 255, 255};
     couleurAjout={255, 255, 0};
-    //TTF_SetFontStyle(police, TTF_STYLE_BOLD | TTF_STYLE_UNDERLINE | TTF_STYLE_ITALIC);
-    couleurCursseur= SDL_MapRGB(ecran->format, 255, 255, 36);
+
     positionCursseur.w=105;
     positionCursseur.h=35;
     positionCursseur.x=(largeur+5)/2;
     positionCursseur.y=0;
-    cursseur= SDL_CreateRGBSurface(SDL_HWSURFACE, positionCursseur.w, positionCursseur.h, NB_BITS_PAR_PIXEL, 0, 0, 0, 0);
-    SDL_FillRect(cursseur, NULL, couleurCursseur);
-    SDL_SetAlpha(cursseur, SDL_SRCALPHA, 70);
 
     for(i=0; i<nb; i++)
     {
         if(i==0)
         {
-            nomArmeInventaire[i]=armeInventaire[i]->GetNom();
-            degat[i]=armeInventaire[i]->GetDegat();
-            sprintf(tableauDegat, "%d", degat[i]);
-            texteNomArme[i] = TTF_RenderText_Blended(police, nomArmeInventaire[i].c_str(), couleurCarac);
+            
             positionTexteNomArme[i].x=0;
             positionTexteNomArme[i].y=265;
         }
         else
         {
-            nomArmeInventaire[i]=armeInventaire[i]->GetNom();
-            degat[i]=armeInventaire[i]->GetDegat();
-            sprintf(tableauDegat, "%d", degat[i]);
-            texteNomArme[i] = TTF_RenderText_Blended(police, nomArmeInventaire[i].c_str(), couleurCarac);
             positionTexteNomArme[i].x=0;
             positionTexteNomArme[i].y=positionTexteNomArme[i-1].y+30;
         }
+
+        nomArmeInventaire[i]=armeInventaire[i]->GetNom();
+        degat[i]=armeInventaire[i]->GetDegat();
+        sprintf(tableauDegat, "%d", degat[i]);
+        texteNomArme[i] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, nomArmeInventaire[i].c_str(), couleurCarac));
+        int texteNomArmeWidth = 0; 
+        int texteNomArmeHeight = 0;
+        TTF_SizeText(police, nomArmeInventaire[i].c_str(), &texteNomArmeWidth, &texteNomArmeHeight);
+        positionTexteNomArme[i].w = texteNomArmeWidth;
+        positionTexteNomArme[i].h = texteNomArmeHeight;
     }
 
     for(i=0; i<arm; i++)
     {
         if(i==0)
         {
-            nomArmureInventaire[i]=casqueInventaire[i]->GetNom();
-            texteNomArmure[i] = TTF_RenderText_Blended(police, nomArmureInventaire[i].c_str(), couleurCarac);
             positionTexteNomArmure[i].x=0;
             positionTexteNomArmure[i].y=265;
         }
         else
         {
-            nomArmureInventaire[i]=casqueInventaire[i]->GetNom();
-            texteNomArmure[i] = TTF_RenderText_Blended(police, nomArmureInventaire[i].c_str(), couleurCarac);
             positionTexteNomArmure[i].x=0;
             positionTexteNomArmure[i].y=positionTexteNomArmure[i-1].y+30;
         }
+
+        nomArmureInventaire[i]=casqueInventaire[i]->GetNom();
+        texteNomArmure[i] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, nomArmureInventaire[i].c_str(), couleurCarac));
+        int texteNomArmureWidth = 0; 
+        int texteNomArmureHeight = 0;
+        TTF_SizeText(police, nomArmureInventaire[i].c_str(), &texteNomArmureWidth, &texteNomArmureHeight);
+        positionTexteNomArmure[i].w = texteNomArmureWidth;
+        positionTexteNomArmure[i].h = texteNomArmureHeight;
     }
 
     for(i=0; i<cuir; i++)
     {
         if(i==0)
         {
-            nomCuirasseInventaire[i]=cuirasseInventaire[i]->GetNom();
-            texteNomCuirasse[i] = TTF_RenderText_Blended(police, nomCuirasseInventaire[i].c_str(), couleurCarac);
             positionTexteNomCuirasse[i].x=0;
             positionTexteNomCuirasse[i].y=265;
         }
         else
         {
-            nomCuirasseInventaire[i]=cuirasseInventaire[i]->GetNom();
-            texteNomCuirasse[i] = TTF_RenderText_Blended(police, nomCuirasseInventaire[i].c_str(), couleurCarac);
             positionTexteNomCuirasse[i].x=0;
             positionTexteNomCuirasse[i].y=positionTexteNomCuirasse[i-1].y+30;
         }
+
+        nomCuirasseInventaire[i]=cuirasseInventaire[i]->GetNom();
+        texteNomCuirasse[i] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, nomCuirasseInventaire[i].c_str(), couleurCarac));
+        int texteNomCuirasseWidth = 0; 
+        int texteNomCuirasseHeight = 0;
+        TTF_SizeText(police, nomCuirasseInventaire[i].c_str(), &texteNomCuirasseWidth, &texteNomCuirasseHeight);
+        positionTexteNomCuirasse[i].w = texteNomCuirasseWidth;
+        positionTexteNomCuirasse[i].h = texteNomCuirasseHeight;
     }
 
     for(i=0; i<bouc; i++)
     {
         if(i==0)
         {
-            nomBouclierInventaire[i]=bouclierInventaire[i]->GetNom();
-            texteNomBouclier[i] = TTF_RenderText_Blended(police, nomBouclierInventaire[i].c_str(), couleurCarac);
             positionTexteNomBouclier[i].x=0;
             positionTexteNomBouclier[i].y=265;
         }
         else
         {
-            nomBouclierInventaire[i]=bouclierInventaire[i]->GetNom();
-            texteNomBouclier[i] = TTF_RenderText_Blended(police, nomBouclierInventaire[i].c_str(), couleurCarac);
             positionTexteNomBouclier[i].x=0;
             positionTexteNomBouclier[i].y=positionTexteNomBouclier[i-1].y+30;
         }
+
+        nomBouclierInventaire[i]=bouclierInventaire[i]->GetNom();
+        texteNomBouclier[i] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, nomBouclierInventaire[i].c_str(), couleurCarac));
+        int texteNomBouclierWidth = 0; 
+        int texteNomBouclierHeight = 0;
+        TTF_SizeText(police, nomBouclierInventaire[i].c_str(), &texteNomBouclierWidth, &texteNomBouclierHeight);
+        positionTexteNomBouclier[i].w = texteNomBouclierWidth;
+        positionTexteNomBouclier[i].h = texteNomBouclierHeight;
     }
 
     for(i=0; i<jamb; i++)
     {
         if(i==0)
         {
-            nomJambiereInventaire[i]=jambiereInventaire[i]->GetNom();
-            texteNomJambiere[i] = TTF_RenderText_Blended(police, nomJambiereInventaire[i].c_str(), couleurCarac);
             positionTexteNomJambiere[i].x=0;
             positionTexteNomJambiere[i].y=265;
         }
         else
         {
-            nomJambiereInventaire[i]=jambiereInventaire[i]->GetNom();
-            texteNomJambiere[i] = TTF_RenderText_Blended(police, nomJambiereInventaire[i].c_str(), couleurCarac);
+            
             positionTexteNomJambiere[i].x=0;
             positionTexteNomJambiere[i].y=positionTexteNomJambiere[i-1].y+30;
         }
+
+        nomJambiereInventaire[i]=jambiereInventaire[i]->GetNom();
+        texteNomJambiere[i] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, nomJambiereInventaire[i].c_str(), couleurCarac));
+        int texteNomJambiereWidth = 0; 
+        int texteNomJambiereHeight = 0;
+        TTF_SizeText(police, nomJambiereInventaire[i].c_str(), &texteNomJambiereWidth, &texteNomJambiereHeight);
+        positionTexteNomJambiere[i].w = texteNomJambiereWidth;
+        positionTexteNomJambiere[i].h = texteNomJambiereHeight;
     }
 
     for(i=0; i<taille; i++)
@@ -192,40 +230,48 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
             {
                 if(j==0)
                 {
-                    nomArmure[j]=e[j].GetNom();
-                    texteStatNomArmureM0[j] = TTF_RenderText_Blended(police, nomArmure[j].c_str(), couleurCarac);
                     positionTexteStatNomArmure[j].x=150;
                     positionTexteStatNomArmure[j].y=130;
 
                 }
                 else if(j>0)
                 {
-                    nomArmure[j]=e[j].GetNom();
-                    texteStatNomArmureM0[j] = TTF_RenderText_Blended(police, nomArmure[j].c_str(), couleurCarac);
+                    
                     positionTexteStatNomArmure[j].x=150;
                     positionTexteStatNomArmure[j].y=positionTexteStatNomArmure[j-1].y+30;
 
                 }
+                nomArmure[j]=e[j].GetNom();
+                texteStatNomArmureM0[j] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, nomArmure[j].c_str(), couleurCarac));
+                int texteStatNomArmureM0Width = 0; 
+                int texteStatNomArmureM0Height = 0;
+                TTF_SizeText(police, nomArmure[j].c_str(), &texteStatNomArmureM0Width, &texteStatNomArmureM0Height);
+                positionTexteStatNomArmure[j].w = texteStatNomArmureM0Width;
+                positionTexteStatNomArmure[j].h = texteStatNomArmureM0Height;
             }
             if(i==1)
             {
 
                 if(j==0)
                 {
-                    nomArmure[j]=e[j].GetNom();
-                    texteStatNomArmureM1[j] = TTF_RenderText_Blended(police, nomArmure[j].c_str(), couleurCarac);
                     positionTexteStatNomArmure[j].x=150;
                     positionTexteStatNomArmure[j].y=130;
 
                 }
                 else if(j>0)
                 {
-                    nomArmure[j]=e[j].GetNom();
-                    texteStatNomArmureM1[j] = TTF_RenderText_Blended(police, nomArmure[j].c_str(), couleurCarac);
                     positionTexteStatNomArmure[j].x=150;
                     positionTexteStatNomArmure[j].y=positionTexteStatNomArmure[j-1].y+30;
 
                 }
+
+                nomArmure[j]=e[j].GetNom();
+                texteStatNomArmureM1[j] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, nomArmure[j].c_str(), couleurCarac));
+                int texteStatNomArmureM1Width = 0; 
+                int texteStatNomArmureM1Height = 0;
+                TTF_SizeText(police, nomArmure[j].c_str(), &texteStatNomArmureM1Width, &texteStatNomArmureM1Height);
+                positionTexteStatNomArmure[j].w = texteStatNomArmureM1Width;
+                positionTexteStatNomArmure[j].h = texteStatNomArmureM1Height;
             }
         }
 
@@ -240,73 +286,112 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
         sprintf(tableauPrc, "Precision : %.2f %", prc[i]);
         sprintf(tableauCha, "Chance : %d", cha[i]);
 
-        texteStatPv [i]= TTF_RenderText_Blended(police, tableauPv, couleurCarac);
+        int texteStatCharacterWidth = 0; 
+        int texteStatCharacterHeight = 0;
+
+        texteStatPv[i] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, tableauPv, couleurCarac));
+        TTF_SizeText(police, tableauPv, &texteStatCharacterWidth, &texteStatCharacterHeight);
         positionTexteStatPv[i].x=(largeur+10)/2;
         positionTexteStatPv[i].y=40;
         positionInfoArmePv.x=positionTexteStatPv[i].x+140;
         positionInfoArmePv.y=40;
+        positionTexteStatPv[i].w = texteStatCharacterWidth;
+        positionTexteStatPv[i].h = texteStatCharacterHeight;
 
-        texteStatPm [i]= TTF_RenderText_Blended(police, tableauPm, couleurCarac);
+        texteStatPm[i] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, tableauPm, couleurCarac));
+        TTF_SizeText(police, tableauPm, &texteStatCharacterWidth, &texteStatCharacterHeight);
         positionTexteStatPm[i].x=(largeur+10)/2;
         positionTexteStatPm[i].y=2*(hauteur-50)/11;
         positionInfoArmePm.x=positionTexteStatPm[i].x+140;
         positionInfoArmePm.y=2*(hauteur-50)/11;
+        positionTexteStatPm[i].w = texteStatCharacterWidth;
+        positionTexteStatPm[i].h = texteStatCharacterHeight;
 
-        texteStatFr [i]= TTF_RenderText_Blended(police, tableauFr, couleurCarac);
+        texteStatFr[i] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, tableauFr, couleurCarac));
+        TTF_SizeText(police, tableauFr, &texteStatCharacterWidth, &texteStatCharacterHeight);
         positionTexteStatFr[i].x=(largeur+10)/2;
         positionTexteStatFr[i].y=3*(hauteur-50)/11;
         positionInfoArmeFr.x=positionTexteStatFr[i].x+140;
         positionInfoArmeFr.y=3*(hauteur-50)/11;
+        positionTexteStatFr[i].w = texteStatCharacterWidth;
+        positionTexteStatFr[i].h = texteStatCharacterHeight;
 
-        texteStatDef [i]= TTF_RenderText_Blended(police, tableauDef, couleurCarac);
+        texteStatDef[i] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, tableauDef, couleurCarac));
+        TTF_SizeText(police, tableauDef, &texteStatCharacterWidth, &texteStatCharacterHeight);
         positionTexteStatDef[i].x=(largeur+10)/2;
         positionTexteStatDef[i].y=4*(hauteur-50)/11;
         positionInfoArmeDef.x=positionTexteStatDef[i].x+180;
         positionInfoArmeDef.y=4*(hauteur-50)/11;
+        positionTexteStatDef[i].w = texteStatCharacterWidth;
+        positionTexteStatDef[i].h = texteStatCharacterHeight;
 
-        texteStatMag [i]= TTF_RenderText_Blended(police, tableauMag, couleurCarac);
+        texteStatMag[i] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, tableauMag, couleurCarac));
+        TTF_SizeText(police, tableauMag, &texteStatCharacterWidth, &texteStatCharacterHeight);
         positionTexteStatMag[i].x=(largeur+10)/2;
         positionTexteStatMag[i].y=5*(hauteur-50)/11;
         positionInfoArmeMag.x=positionTexteStatMag[i].x+140;
         positionInfoArmeMag.y=5*(hauteur-50)/11;
+        positionTexteStatMag[i].w = texteStatCharacterWidth;
+        positionTexteStatMag[i].h = texteStatCharacterHeight;
 
-        texteStatVol [i]= TTF_RenderText_Blended(police, tableauVol, couleurCarac);
+        texteStatVol[i] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, tableauVol, couleurCarac));
+        TTF_SizeText(police, tableauVol, &texteStatCharacterWidth, &texteStatCharacterHeight);
         positionTexteStatVol[i].x=(largeur+10)/2;
         positionTexteStatVol[i].y=6*(hauteur-50)/11;
         positionInfoArmeVol.x=positionTexteStatVol[i].x+140;
         positionInfoArmeVol.y=6*(hauteur-50)/11;
+        positionTexteStatVol[i].w = texteStatCharacterWidth;
+        positionTexteStatVol[i].h = texteStatCharacterHeight;
 
-        texteStatVit [i]= TTF_RenderText_Blended(police, tableauVit, couleurCarac);
+        texteStatVit[i] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, tableauVit, couleurCarac));
+        TTF_SizeText(police, tableauVit, &texteStatCharacterWidth, &texteStatCharacterHeight);
         positionTexteStatVit[i].x=(largeur+10)/2;
         positionTexteStatVit[i].y=7*(hauteur-50)/11;
         positionInfoArmeVit.x=positionTexteStatVit[i].x+140;
-        positionInfoArmeVit.y=7*(hauteur-50)/11;;
+        positionInfoArmeVit.y=7*(hauteur-50)/11;
+        positionTexteStatVit[i].w = texteStatCharacterWidth;
+        positionTexteStatVit[i].h = texteStatCharacterHeight;
 
-        texteStatPrc [i]= TTF_RenderText_Blended(police, tableauPrc, couleurCarac);
+        texteStatPrc[i] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, tableauPrc, couleurCarac));
+        TTF_SizeText(police, tableauPrc, &texteStatCharacterWidth, &texteStatCharacterHeight);
         positionTexteStatPrc[i].x=(largeur+10)/2;
         positionTexteStatPrc[i].y=8*(hauteur-50)/11;
         positionInfoArmePrc.x=positionTexteStatPrc[i].x+140;
         positionInfoArmePrc.y=8*(hauteur-50)/11;
+        positionTexteStatPrc[i].w = texteStatCharacterWidth;
+        positionTexteStatPrc[i].h = texteStatCharacterHeight;
 
-        texteStatEsq [i]= TTF_RenderText_Blended(police, tableauEsq, couleurCarac);
+        texteStatEsq[i] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, tableauEsq, couleurCarac));
+        TTF_SizeText(police, tableauEsq, &texteStatCharacterWidth, &texteStatCharacterHeight);
         positionTexteStatEsq[i].x=(largeur+10)/2;
         positionTexteStatEsq[i].y=9*(hauteur-50)/11;
         positionInfoArmeEsq.x= positionTexteStatEsq[i].x+140;
         positionInfoArmeEsq.y=9*(hauteur-50)/11;
+        positionTexteStatEsq[i].w = texteStatCharacterWidth;
+        positionTexteStatEsq[i].h = texteStatCharacterHeight;
 
-        texteStatCha [i]= TTF_RenderText_Blended(police, tableauCha, couleurCarac);
+        texteStatCha[i] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, tableauCha, couleurCarac));
+        TTF_SizeText(police, tableauCha, &texteStatCharacterWidth, &texteStatCharacterHeight);
         positionTexteStatCha[i].x=(largeur+10)/2;
         positionTexteStatCha[i].y=10*(hauteur-50)/11;
         positionInfoArmeCha.x=positionTexteStatCha[i].x+140;
-        positionInfoArmeCha.y=10*(hauteur-50)/11;;
+        positionInfoArmeCha.y=10*(hauteur-50)/11;
+        positionTexteStatCha[i].w = texteStatCharacterWidth;
+        positionTexteStatCha[i].h = texteStatCharacterHeight;
 
-        texteStatNomArme [i]= TTF_RenderText_Blended(police, nomArme[i].c_str(), couleurCarac);
+        texteStatNomArme[i] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, nomArme[i].c_str(), couleurCarac));
+        TTF_SizeText(police, nomArme[i].c_str(), &texteStatCharacterWidth, &texteStatCharacterHeight);
         positionTexteStatNomArme[i].x=150;
         positionTexteStatNomArme[i].y=100;
+        positionTexteStatNomArme[i].w = texteStatCharacterWidth;
+        positionTexteStatNomArme[i].h = texteStatCharacterHeight;
 
-        texteStatPrenom[i]= TTF_RenderText_Blended(police, prenom[i].c_str(), couleurCarac);
+        texteStatPrenom[i] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, prenom[i].c_str(), couleurCarac));
+        TTF_SizeText(police, prenom[i].c_str(), &texteStatCharacterWidth, &texteStatCharacterHeight);
         positionTexteStatPrenom[i].x=100;
         positionTexteStatPrenom[i].y=45;
+        positionTexteStatPrenom[i].w = texteStatCharacterWidth;
+        positionTexteStatPrenom[i].h = texteStatCharacterHeight;
     }
 
     const char* tableauEquip[5]= {"Arme :", "Casque :", "Cuirasse :", "Bouclier :", "Jambiere :"};
@@ -315,25 +400,28 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
     {
         if(i==0)
         {
-            texteEquipement[i] = TTF_RenderText_Blended(police, tableauEquip[i], couleurCarac);
             positionTexteEquipement[i].x=0;
             positionTexteEquipement[i].y=100;
         }
         else
         {
-            texteEquipement[i] = TTF_RenderText_Blended(police, tableauEquip[i], couleurCarac);
             positionTexteEquipement[i].x=0;
             positionTexteEquipement[i].y=positionTexteEquipement[i-1].y+30;
         }
+
+        texteEquipement[i] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, tableauEquip[i], couleurCarac));
+        int texteEquipementWidth = 0; 
+        int texteEquipementHeight = 0;
+        TTF_SizeText(police, tableauEquip[i], &texteEquipementWidth, &texteEquipementHeight);
+        positionTexteEquipement[i].w = texteEquipementWidth;
+        positionTexteEquipement[i].h = texteEquipementHeight;
     }
 
     positionLigne.x = largeur/2;
     positionLigne.y = 0;
     positionLigne.w = 2;
     positionLigne.h = hauteur;
-    ligne= SDL_CreateRGBSurface(SDL_HWSURFACE, positionLigne.w, positionLigne.h, 32, 0, 0, 0, 0);
-    couleurLigne= SDL_MapRGB(ecran->format, 255, 255, 255);
-    SDL_FillRect(ligne, NULL, couleurLigne);
+
 
     for(i=0; i<2; i++)
     {
@@ -343,8 +431,6 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
             positionLigneHorizontale[i].y = 40;
             positionLigneHorizontale[i].w = largeur;
             positionLigneHorizontale[i].h = 2;
-            ligneHorizontale[i]= SDL_CreateRGBSurface(SDL_HWSURFACE, positionLigneHorizontale[i].w, positionLigneHorizontale[i].h, 32, 0, 0, 0, 0);
-            SDL_FillRect(ligneHorizontale[i], NULL, couleurLigne);
         }
         else
         {
@@ -352,35 +438,47 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
             positionLigneHorizontale[i].y = 260;
             positionLigneHorizontale[i].w = largeur/2;
             positionLigneHorizontale[i].h = 2;
-            ligneHorizontale [i]= SDL_CreateRGBSurface(SDL_HWSURFACE, positionLigneHorizontale[i].w, positionLigneHorizontale[i].h, 32, 0, 0, 0, 0);
-            SDL_FillRect(ligneHorizontale[i], NULL, couleurLigne);
         }
     }
 
-    titreMenu=TTF_RenderText_Blended(police, "Equipement", couleurCarac);
+    titreMenu = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, "Equipement", couleurCarac));
+    int titreMenuWidth = 0; 
+    int titreMenuHeight = 0;
+    TTF_SizeText(police, "Equipement", &titreMenuWidth, &titreMenuHeight);
     positionTitreMenu.x=0;
     positionTitreMenu.y=0;
+    positionTitreMenu.w = titreMenuWidth;
+    positionTitreMenu.h = titreMenuHeight;
 
     const char*tableauOption[2]={"Equiper", "Enlever"};
+
     for(i=0; i<2; i++)
     {
-            optionEquipement[i]=TTF_RenderText_Blended(police, tableauOption[i], couleurCarac);
-            if(i==0)
-            {
-                positionOptionEquipement[i].x=(largeur+5)/2;
-                positionOptionEquipement[i].y=0;
-            }
-            else
-            {
-                positionOptionEquipement[i].x=positionOptionEquipement[i-1].x+150;
-                positionOptionEquipement[i].y=0;
-            }
+        if(i==0)
+        {
+            positionOptionEquipement[i].x=(largeur+5)/2;
+            positionOptionEquipement[i].y=0;
+        }
+        else
+        {
+            positionOptionEquipement[i].x=positionOptionEquipement[i-1].x+150;
+            positionOptionEquipement[i].y=0;
+        }
 
+        optionEquipement[i] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, tableauOption[i], couleurCarac));
+        int optionEquipementWidth = 0; 
+        int optionEquipementHeight = 0;
+        TTF_SizeText(police, tableauOption[i], &optionEquipementWidth, &optionEquipementHeight);
+        positionOptionEquipement[i].w = optionEquipementWidth;
+        positionOptionEquipement[i].h = optionEquipementHeight;
     }
 
     positionTof.x =0;
     positionTof.y = 45;
-    tof = IMG_Load("tof.png");
+    positionTof.w = 50;
+    positionTof.h = 50;
+    tof = SDL_CreateTextureFromSurface(ecran, IMG_Load("tof.png"));
+    
     clip[MEMBRE1].x=0;
     clip[MEMBRE1].y=0;
     clip[MEMBRE1].w=192/4;
@@ -516,32 +614,36 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
                 }
                 else if(positionCursseur.x==positionTexteStatNomArme[membre].x && positionCursseur.y==positionTexteStatNomArme[membre].y && cpt==2)
                 {
+                    string weaponName = NULL;
                     if(equipe[membre]->GetClasse()=="Chevalier dragon" && equipe[membre]->GetArmeEquipe().GetCategorie() != "aucun")
                     {
                         Lance *substitut=new Lance(equipe[membre]->GetArmeEquipe().GetNom(), equipe[membre]->GetArmeEquipe().GetDegat());
                         armeInventaire.push_back(substitut);
-                        Arme *aucune=new Arme("aucun");
-                        equipe[membre]->EquiperArme(*aucune);
-                        texteStatNomArme[membre] = TTF_RenderText_Blended(police, aucune->GetNom().c_str(), couleurCarac);
-                        nb=armeInventaire.size();
-                        texteNomArme[nb-1]= TTF_RenderText_Blended(police, substitut->GetNom().c_str(), couleurCarac);
-                        this->EmissionSonValidation();
+                        weaponName = substitut->GetNom().c_str();
                     }
                     else if(equipe[membre]->GetClasse()=="Moine" && equipe[membre]->GetArmeEquipe().GetCategorie() != "aucun")
                     {
                         Gant *substitut=new Gant(equipe[membre]->GetArmeEquipe().GetNom(), equipe[membre]->GetArmeEquipe().GetDegat());
                         armeInventaire.push_back(substitut);
-                        Arme *aucune=new Arme("aucun");
-                        equipe[membre]->EquiperArme(*aucune);
-                        texteStatNomArme[membre] = TTF_RenderText_Blended(police, aucune->GetNom().c_str(), couleurCarac);
-                        nb=armeInventaire.size();
-                        texteNomArme[nb-1]= TTF_RenderText_Blended(police, substitut->GetNom().c_str(), couleurCarac);
-                        this->EmissionSonValidation();
+                        weaponName = substitut->GetNom().c_str();
                     }
-                    else
-                    {
 
-                    }
+                    Arme *aucune=new Arme("aucun");
+                    equipe[membre]->EquiperArme(*aucune);
+                    texteStatNomArme[membre] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, aucune->GetNom().c_str(), couleurCarac));
+                    int texteStatNomArmeWidth = 0; 
+                    int texteStatNomArmeHeight = 0;
+                    TTF_SizeText(police, aucune->GetNom().c_str(), &texteStatNomArmeWidth, &texteStatNomArmeHeight);
+                    positionTexteStatNomArme[membre].w = texteStatNomArmeWidth;
+                    positionTexteStatNomArme[membre].h = texteStatNomArmeHeight;
+                    nb=armeInventaire.size();
+                    texteNomArme[nb-1] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, weaponName.c_str(), couleurCarac));
+                    int texteNomArmeWidth = 0; 
+                    int texteNomArmeHeight = 0;
+                    TTF_SizeText(police, weaponName.c_str(), &texteNomArmeWidth, &texteNomArmeHeight);
+                    positionTexteNomArme[membre].w = texteNomArmeWidth;
+                    positionTexteNomArme[membre].h = texteNomArmeHeight;
+                    this->EmissionSonValidation();
                 }
                 else if(positionCursseur.x==positionTexteStatNomArmure[CASQUE].x && positionCursseur.y==positionTexteStatNomArmure[CASQUE].y && cpt==0)
                 {
@@ -663,7 +765,12 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
                                 }
 
                                 equipe[membre]->EquiperArme(*armeInventaire[i]);
-                                texteStatNomArme[membre] = TTF_RenderText_Blended(police, armeInventaire[i]->GetNom().c_str(), couleurCarac);
+                                texteStatNomArme[membre] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, armeInventaire[i]->GetNom().c_str(), couleurCarac));
+                                int texteStatNomArmeWidth = 0; 
+                                int texteStatNomArmeHeight = 0;
+                                TTF_SizeText(police, armeInventaire[i]->GetNom().c_str(), &texteStatNomArmeWidth, &texteStatNomArmeHeight);
+                                positionTexteStatNomArme[membre].w = texteStatNomArmeWidth;
+                                positionTexteStatNomArme[membre].h = texteStatNomArmeHeight;
                                 j=0;
                                 l=0;
 
@@ -675,17 +782,19 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
                                 }
                                 for(j=0; j<copy.size(); j++)
                                 {
-                                    if(j==i)
-                                    {
-
-                                    }
-                                    else
+                                    if(j != i)
                                     {
                                         armeInventaire.push_back(copy[j]);
                                         nomArmeInventaire[l]=armeInventaire[l]->GetNom();
-                                        texteNomArme[l] = TTF_RenderText_Blended(police, nomArmeInventaire[l].c_str(), couleurCarac);
+                                        texteNomArme[l] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, nomArmeInventaire[l].c_str(), couleurCarac));
+                                        int texteNomArmeWidth = 0; 
+                                        int texteNomArmeHeight = 0;
+                                        TTF_SizeText(police, nomArmeInventaire[l].c_str(), &texteNomArmeWidth, &texteNomArmeHeight);
+                                        positionTexteNomArme[membre].w = texteNomArmeWidth;
+                                        positionTexteNomArme[membre].h = texteNomArmeHeight;
                                         l++;
                                     }
+                                    
                                 }
                                 positionCursseur.x=positionTexteStatNomArme[membre].x;
                                 positionCursseur.y=positionTexteStatNomArme[membre].y;
@@ -721,13 +830,13 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
                                 {
                                     equipe[membre]->EquiperCasque(*casqueInventaire[i]);
                                     equipe[membre]->ModifierArmure(*casqueInventaire[i]);
-                                    texteStatNomArmureM0[CASQUE] = TTF_RenderText_Blended(police, casqueInventaire[i]->GetNom().c_str(), couleurCarac);
+                                    texteStatNomArmureM0[CASQUE] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, casqueInventaire[i]->GetNom().c_str(), couleurCarac)); 
                                 }
                                 else if (membre==MEMBRE2)
                                 {
                                     equipe[membre]->EquiperCasque(*casqueInventaire[i]);
                                     equipe[membre]->ModifierArmure(*casqueInventaire[i]);
-                                    texteStatNomArmureM1[CASQUE] = TTF_RenderText_Blended(police, casqueInventaire[i]->GetNom().c_str(), couleurCarac);
+                                    texteStatNomArmureM1[CASQUE] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, casqueInventaire[i]->GetNom().c_str(), couleurCarac));
                                 }
                                 j=0;
                                 l=0;
@@ -748,7 +857,7 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
                                     {
                                         casqueInventaire.push_back(copy[j]);
                                         nomArmureInventaire[l]=casqueInventaire[l]->GetNom();
-                                        texteNomArmure[l] = TTF_RenderText_Blended(police, nomArmureInventaire[l].c_str(), couleurCarac);
+                                        texteNomArmure[l] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, nomArmureInventaire[l].c_str(), couleurCarac));
                                         l++;
                                     }
                                 }
@@ -787,13 +896,13 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
                                 {
                                     equipe[membre]->EquiperCuirasse(*cuirasseInventaire[i]);
                                     equipe[membre]->ModifierArmure(*cuirasseInventaire[i]);
-                                    texteStatNomArmureM0[CUIRASSE] = TTF_RenderText_Blended(police, cuirasseInventaire[i]->GetNom().c_str(), couleurCarac);
+                                    texteStatNomArmureM0[CUIRASSE] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, cuirasseInventaire[i]->GetNom().c_str(), couleurCarac));
                                 }
                                 else if (membre==MEMBRE2)
                                 {
                                     equipe[membre]->EquiperCuirasse(*cuirasseInventaire[i]);
                                     equipe[membre]->ModifierArmure(*cuirasseInventaire[i]);
-                                    texteStatNomArmureM1[CUIRASSE] = TTF_RenderText_Blended(police, cuirasseInventaire[i]->GetNom().c_str(), couleurCarac);
+                                    texteStatNomArmureM1[CUIRASSE] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, cuirasseInventaire[i]->GetNom().c_str(), couleurCarac));
                                 }
                                 j=0;
                                 l=0;
@@ -814,7 +923,7 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
                                     {
                                         cuirasseInventaire.push_back(copy[j]);
                                         nomCuirasseInventaire[l]=cuirasseInventaire[l]->GetNom();
-                                        texteNomCuirasse[l] = TTF_RenderText_Blended(police, nomCuirasseInventaire[l].c_str(), couleurCarac);
+                                        texteNomCuirasse[l] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, nomCuirasseInventaire[l].c_str(), couleurCarac));
                                         l++;
                                     }
                                 }
@@ -853,13 +962,13 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
                                 {
                                     equipe[membre]->EquiperBouclier(*bouclierInventaire[i]);
                                     equipe[membre]->ModifierArmure(*bouclierInventaire[i]);
-                                    texteStatNomArmureM0[BOUCLIER] = TTF_RenderText_Blended(police, bouclierInventaire[i]->GetNom().c_str(), couleurCarac);
+                                    texteStatNomArmureM0[BOUCLIER] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, bouclierInventaire[i]->GetNom().c_str(), couleurCarac));
                                 }
                                 else if (membre==MEMBRE2)
                                 {
                                     equipe[membre]->EquiperBouclier(*bouclierInventaire[i]);
                                     equipe[membre]->ModifierArmure(*bouclierInventaire[i]);
-                                    texteStatNomArmureM1[BOUCLIER] = TTF_RenderText_Blended(police, bouclierInventaire[i]->GetNom().c_str(), couleurCarac);
+                                    texteStatNomArmureM1[BOUCLIER] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, bouclierInventaire[i]->GetNom().c_str(), couleurCarac));
                                 }
                                 j=0;
                                 l=0;
@@ -880,7 +989,7 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
                                     {
                                         bouclierInventaire.push_back(copy[j]);
                                         nomBouclierInventaire[l]=bouclierInventaire[l]->GetNom();
-                                        texteNomBouclier[l] = TTF_RenderText_Blended(police, nomBouclierInventaire[l].c_str(), couleurCarac);
+                                        texteNomBouclier[l] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, nomBouclierInventaire[l].c_str(), couleurCarac));
                                         l++;
                                     }
                                 }
@@ -920,13 +1029,13 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
                                 {
                                     equipe[membre]->EquiperJambiere(*jambiereInventaire[i]);
                                     equipe[membre]->ModifierArmure(*jambiereInventaire[i]);
-                                    texteStatNomArmureM0[JAMBIERE] = TTF_RenderText_Blended(police, jambiereInventaire[i]->GetNom().c_str(), couleurCarac);
+                                    texteStatNomArmureM0[JAMBIERE] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, jambiereInventaire[i]->GetNom().c_str(), couleurCarac));
                                 }
                                 else if (membre==MEMBRE2)
                                 {
                                     equipe[membre]->EquiperJambiere(*jambiereInventaire[i]);
                                     equipe[membre]->ModifierArmure(*jambiereInventaire[i]);
-                                    texteStatNomArmureM1[JAMBIERE] = TTF_RenderText_Blended(police, jambiereInventaire[i]->GetNom().c_str(), couleurCarac);
+                                    texteStatNomArmureM1[JAMBIERE] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, jambiereInventaire[i]->GetNom().c_str(), couleurCarac));
                                 }
                                 j=0;
                                 l=0;
@@ -947,7 +1056,7 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
                                     {
                                         jambiereInventaire.push_back(copy[j]);
                                         nomJambiereInventaire[l]=jambiereInventaire[l]->GetNom();
-                                        texteNomJambiere[l] = TTF_RenderText_Blended(police, nomJambiereInventaire[l].c_str(), couleurCarac);
+                                        texteNomJambiere[l] = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, nomJambiereInventaire[l].c_str(), couleurCarac));
                                         l++;
                                     }
                                 }
@@ -1163,7 +1272,7 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
                 }
                 break;
 
-                case SDLK_KP6:
+                case SDLK_KP_6:
                 if(membre==(taille-1) && (cpt==0 || cpt==2))
                 {
                     membre=MEMBRE1;
@@ -1180,7 +1289,7 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
                 }
                 break;
 
-                case SDLK_KP4:
+                case SDLK_KP_4:
                 if(membre==MEMBRE1 && (cpt==0 || cpt==2))
                 {
                     membre=taille-1;
@@ -1211,7 +1320,12 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
                 if(positionCursseur.y==positionTexteNomArme[abs(m-n)].y && cpt==1)
                 {
                     sprintf(tableauDegat, "+%d", armeInventaire[m]->GetDegat());
-                    InfoArmeFr= TTF_RenderText_Blended(police, tableauDegat, couleurAjout);
+                    InfoArmeFr = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, tableauDegat, couleurAjout));
+                    int InfoArmeFrWidth = 0;
+                    int InfoArmeFrHeight = 0;
+                    TTF_SizeText(police, tableauDegat, &InfoArmeFrWidth, &InfoArmeFrHeight);
+                    positionInfoArmeFr.w = InfoArmeFrWidth;
+                    positionInfoArmeFr.h = InfoArmeFrHeight;
                     flag=1;
                 }
             }
@@ -1228,9 +1342,19 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
                 if(positionCursseur.y==positionTexteNomArmure[abs(m-n)].y && cpt==3)
                 {
                     sprintf(tableauInfoCasque, "+%d", casqueInventaire[m]->GetDefPhy());
-                    InfoArmeDef= TTF_RenderText_Blended(police, tableauInfoCasque, couleurAjout);
+                    InfoArmeDef = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, tableauInfoCasque, couleurAjout));
+                    int InfoArmeDefWidth = 0;
+                    int InfoArmeDefHeight = 0;
+                    TTF_SizeText(police, tableauInfoCasque, &InfoArmeDefWidth, &InfoArmeDefHeight);
+                    positionInfoArmeDef.w = InfoArmeDefWidth;
+                    positionInfoArmeDef.h = InfoArmeDefHeight;
                     sprintf(tableauInfoCasque, "+%d", casqueInventaire[m]->GetDefMag());
-                    InfoArmeMag= TTF_RenderText_Blended(police, tableauInfoCasque, couleurAjout);
+                    InfoArmeMag = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, tableauInfoCasque, couleurAjout));
+                    int InfoArmeMagWidth = 0;
+                    int InfoArmeMagHeight = 0;
+                    TTF_SizeText(police, tableauInfoCasque, &InfoArmeMagWidth, &InfoArmeMagHeight);
+                    positionInfoArmeMag.w = InfoArmeMagWidth;
+                    positionInfoArmeMag.h = InfoArmeMagHeight;
                     flag=2;
                 }
             }
@@ -1247,9 +1371,19 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
                 if(positionCursseur.y==positionTexteNomCuirasse[abs(m-n)].y && cpt==4)
                 {
                     sprintf(tableauInfoCuirasse, "+%d", cuirasseInventaire[m]->GetDefPhy());
-                    InfoArmeDef= TTF_RenderText_Blended(police, tableauInfoCuirasse, couleurAjout);
+                    InfoArmeDef = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, tableauInfoCuirasse, couleurAjout));
+                    int InfoArmeDefWidth = 0;
+                    int InfoArmeDefHeight = 0;
+                    TTF_SizeText(police, tableauInfoCuirasse, &InfoArmeDefWidth, &InfoArmeDefHeight);
+                    positionInfoArmeDef.w = InfoArmeDefWidth;
+                    positionInfoArmeDef.h = InfoArmeDefHeight;
                     sprintf(tableauInfoCuirasse, "+%d", cuirasseInventaire[m]->GetDefMag());
-                    InfoArmeMag= TTF_RenderText_Blended(police, tableauInfoCuirasse, couleurAjout);
+                    InfoArmeMag = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, tableauInfoCuirasse, couleurAjout));
+                    int InfoArmeMagWidth = 0;
+                    int InfoArmeMagHeight = 0;
+                    TTF_SizeText(police, tableauInfoCuirasse, &InfoArmeMagWidth, &InfoArmeMagHeight);
+                    positionInfoArmeMag.w = InfoArmeMagWidth;
+                    positionInfoArmeMag.h = InfoArmeMagHeight;
                     flag=3;
                 }
             }
@@ -1266,9 +1400,19 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
                 if(positionCursseur.y==positionTexteNomBouclier[abs(m-n)].y && cpt==5)
                 {
                     sprintf(tableauInfoBouclier, "+%d", bouclierInventaire[m]->GetDefPhy());
-                    InfoArmeDef= TTF_RenderText_Blended(police, tableauInfoBouclier, couleurAjout);
+                    InfoArmeDef = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, tableauInfoBouclier, couleurAjout));
+                    int InfoArmeDefWidth = 0;
+                    int InfoArmeDefHeight = 0;
+                    TTF_SizeText(police, tableauInfoBouclier, &InfoArmeDefWidth, &InfoArmeDefHeight);
+                    positionInfoArmeDef.w = InfoArmeDefWidth;
+                    positionInfoArmeDef.h = InfoArmeDefHeight;
                     sprintf(tableauInfoBouclier, "+%d", bouclierInventaire[m]->GetDefMag());
-                    InfoArmeMag= TTF_RenderText_Blended(police, tableauInfoBouclier, couleurAjout);
+                    InfoArmeMag = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, tableauInfoBouclier, couleurAjout));
+                    int InfoArmeMagWidth = 0;
+                    int InfoArmeMagHeight = 0;
+                    TTF_SizeText(police, tableauInfoBouclier, &InfoArmeMagWidth, &InfoArmeMagHeight);
+                    positionInfoArmeMag.w = InfoArmeMagWidth;
+                    positionInfoArmeMag.h = InfoArmeMagHeight;
                     flag=4;
                 }
             }
@@ -1285,9 +1429,19 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
                 if(positionCursseur.y==positionTexteNomJambiere[abs(m-n)].y && cpt==6)
                 {
                     sprintf(tableauInfoJambiere, "+%d", jambiereInventaire[m]->GetDefPhy());
-                    InfoArmeDef= TTF_RenderText_Blended(police, tableauInfoJambiere, couleurAjout);
+                    InfoArmeDef = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, tableauInfoJambiere, couleurAjout));
+                    int InfoArmeDefWidth = 0;
+                    int InfoArmeDefHeight = 0;
+                    TTF_SizeText(police, tableauInfoJambiere, &InfoArmeDefWidth, &InfoArmeDefHeight);
+                    positionInfoArmeDef.w = InfoArmeDefWidth;
+                    positionInfoArmeDef.h = InfoArmeDefHeight;
                     sprintf(tableauInfoJambiere, "+%d", jambiereInventaire[m]->GetDefMag());
-                    InfoArmeMag= TTF_RenderText_Blended(police, tableauInfoJambiere, couleurAjout);
+                    InfoArmeMag = SDL_CreateTextureFromSurface(ecran, TTF_RenderText_Blended(police, tableauInfoJambiere, couleurAjout));
+                    int InfoArmeMagWidth = 0;
+                    int InfoArmeMagHeight = 0;
+                    TTF_SizeText(police, tableauInfoJambiere, &InfoArmeMagWidth, &InfoArmeMagHeight);
+                    positionInfoArmeMag.w = InfoArmeMagWidth;
+                    positionInfoArmeMag.h = InfoArmeMagHeight;
                     flag=5;
                 }
             }
@@ -1296,185 +1450,166 @@ void SmenuEquipement::AffichageEquipement(std::vector<Personnage*> equipe, SDL_S
                 n++;
             }
         }
-        // Collage de la surface de menu sur l'écran
-        SDL_BlitSurface(fenMenu, NULL, ecran, &positionMenu);
-        SDL_BlitSurface(ligne, NULL, ecran, &positionLigne);
-        SDL_BlitSurface(texteStatPrenom[membre], NULL, ecran, &positionTexteStatPrenom[membre]);
-        SDL_BlitSurface(texteStatNomArme[membre], NULL, ecran, &positionTexteStatNomArme[membre]);
-        SDL_BlitSurface(texteStatPv[membre], NULL, ecran, &positionTexteStatPv[membre]);
-        SDL_BlitSurface(texteStatPm[membre], NULL, ecran, &positionTexteStatPm[membre]);
-        SDL_BlitSurface(texteStatFr[membre], NULL, ecran, &positionTexteStatFr[membre]);
-        SDL_BlitSurface(texteStatDef[membre], NULL, ecran, &positionTexteStatDef[membre]);
-        SDL_BlitSurface(texteStatMag[membre], NULL, ecran, &positionTexteStatMag[membre]);
-        SDL_BlitSurface(texteStatVol[membre], NULL, ecran, &positionTexteStatVol[membre]);
-        SDL_BlitSurface(texteStatVit[membre], NULL, ecran, &positionTexteStatVit[membre]);
-        SDL_BlitSurface(texteStatPrc[membre], NULL, ecran, &positionTexteStatPrc[membre]);
-        SDL_BlitSurface(texteStatEsq[membre], NULL, ecran, &positionTexteStatEsq[membre]);
-        SDL_BlitSurface(texteStatCha[membre], NULL, ecran, &positionTexteStatCha[membre]);
-
-        for(i=0; i<2; i++)
-        {
-            SDL_BlitSurface(ligneHorizontale[i], NULL, ecran, &positionLigneHorizontale[i]);
-        }
-
-        if(membre==MEMBRE1)
-        {
-            for(i=0; i<e.size(); i++)
-            {
-               SDL_BlitSurface(texteStatNomArmureM0[i], NULL, ecran, &positionTexteStatNomArmure[i]);
-            }
-        }
-        if(membre==MEMBRE2)
-        {
-            for(i=0; i<e.size(); i++)
-            {
-               SDL_BlitSurface(texteStatNomArmureM1[i], NULL, ecran, &positionTexteStatNomArmure[i]);
-            }
-        }
-
-        for(i=0; i<5; i++)
-        {
-            SDL_BlitSurface(texteEquipement[i], NULL, ecran, &positionTexteEquipement[i]);
-        }
-        for(i=0; i<2; i++)
-        {
-            SDL_BlitSurface(optionEquipement[i], NULL, ecran, &positionOptionEquipement[i]);
-        }
-
-        if(cpt==1)
-        {
-            j=0;
-            for(i=0; i<armeInventaire.size(); i++)
-            {
-                if(equipe[membre]->GetArmeEquipable() == armeInventaire[i]->GetCategorie())
-                {
-                    SDL_BlitSurface(texteNomArme[i], NULL, ecran, &positionTexteNomArme[abs(i-j)]);
-                }
-                else
-                {
-                    j++;
-                }
-            }
-        }
-
-        if(cpt==3)
-        {
-            j=0;
-            for(i=0; i<casqueInventaire.size(); i++)
-            {
-                if(equipe[membre]->IsEquipable(casqueInventaire[i]->GetGenre()))
-                {
-                    SDL_BlitSurface(texteNomArmure[i], NULL, ecran, &positionTexteNomArmure[abs(i-j)]);
-                }
-                else
-                {
-                    j++;
-                }
-            }
-        }
-
-        if(cpt==4)
-        {
-            j=0;
-            for(i=0; i<cuirasseInventaire.size(); i++)
-            {
-                if(equipe[membre]->IsEquipable(cuirasseInventaire[i]->GetGenre()))
-                {
-                    SDL_BlitSurface(texteNomCuirasse[i], NULL, ecran, &positionTexteNomArmure[abs(i-j)]);
-                }
-                else
-                {
-                    j++;
-                }
-            }
-        }
-
-        if(cpt==5)
-        {
-            j=0;
-            for(i=0; i<bouclierInventaire.size(); i++)
-            {
-                if(equipe[membre]->IsEquipable(bouclierInventaire[i]->GetGenre()))
-                {
-                    SDL_BlitSurface(texteNomBouclier[i], NULL, ecran, &positionTexteNomBouclier[abs(i-j)]);
-                }
-                else
-                {
-                    j++;
-                }
-            }
-        }
-
-        if(cpt==6)
-        {
-            j=0;
-            for(i=0; i<jambiereInventaire.size(); i++)
-            {
-                if(equipe[membre]->IsEquipable(jambiereInventaire[i]->GetGenre()))
-                {
-                    SDL_BlitSurface(texteNomJambiere[i], NULL, ecran, &positionTexteNomJambiere[abs(i-j)]);
-                }
-                else
-                {
-                    j++;
-                }
-            }
-        }
-
-        for(m=0; m<nb; m++)
-        {
-            if(positionCursseur.y==positionTexteNomArme[m].y && flag==1)
-            {
-                    SDL_BlitSurface(InfoArmeFr, NULL, ecran, &positionInfoArmeFr);
-            }
-        }
-
-        for(m=0; m<arm; m++)
-        {
-            if(positionCursseur.y==positionTexteNomArmure[m].y && flag==2)
-            {
-                    SDL_BlitSurface(InfoArmeDef, NULL, ecran, &positionInfoArmeDef);
-                    SDL_BlitSurface(InfoArmeMag, NULL, ecran, &positionInfoArmeMag);
-            }
-        }
-
-        for(m=0; m<cuir; m++)
-        {
-            if(positionCursseur.y==positionTexteNomCuirasse[m].y && flag==3)
-            {
-                    SDL_BlitSurface(InfoArmeDef, NULL, ecran, &positionInfoArmeDef);
-                    SDL_BlitSurface(InfoArmeMag, NULL, ecran, &positionInfoArmeMag);
-            }
-        }
-
-        for(m=0; m<bouc; m++)
-        {
-            if(positionCursseur.y==positionTexteNomBouclier[m].y && flag==4)
-            {
-                    SDL_BlitSurface(InfoArmeDef, NULL, ecran, &positionInfoArmeDef);
-                    SDL_BlitSurface(InfoArmeMag, NULL, ecran, &positionInfoArmeMag);
-            }
-        }
-
-        for(m=0; m<jamb; m++)
-        {
-            if(positionCursseur.y==positionTexteNomJambiere[m].y && flag==5)
-            {
-                    SDL_BlitSurface(InfoArmeDef, NULL, ecran, &positionInfoArmeDef);
-                    SDL_BlitSurface(InfoArmeMag, NULL, ecran, &positionInfoArmeMag);
-            }
-        }
-
-        SDL_BlitSurface(tof, &clip[membre], ecran, &positionTof);
-        SDL_BlitSurface(cursseur, NULL, ecran, &positionCursseur);
-        SDL_BlitSurface(titreMenu, NULL, ecran, &positionTitreMenu);
-        //Mise à jour de l'affichage
-        SDL_Flip(ecran);
+        
+        DisplayMenuElements(equipe, armeInventaire, casqueInventaire, cuirasseInventaire, bouclierInventaire, jambiereInventaire, membre, ecran, cpt, flag);
     }
     obj->SetArmeInventaire(armeInventaire);
     obj->SetCasqueInventaire(casqueInventaire);
     obj->SetCuirasseInventaire(cuirasseInventaire);
     obj->SetBouclierInventaire(bouclierInventaire);
     obj->SetJambiereInventaire(jambiereInventaire);
+}
+
+void SmenuEquipement::DisplayMenuElements(std::vector<Personnage*> equipe, std::vector<Arme*> armeInventaire, std::vector<Casque*> casqueInventaire, std::vector<Cuirasse*> cuirasseInventaire, std::vector<Bouclier*> bouclierInventaire, std::vector<Jambiere*> jambiereInventaire, int memberId, SDL_Renderer *ecran, int cpt, int flag)
+{
+    //cpt = 0 => EQUIPER
+    //cpt = 2 => ENELVER
+    //cpt = 1 => ARME
+    //cpt = 3 => CASQUE
+    //cpt = 4 => CUIRASSE
+    //cpt = 5 => BOUCLIER
+    //cpt = 6 => JAMBIERE
+    SDL_SetRenderDrawColor(ecran, 180, 180, 180, SDL_ALPHA_OPAQUE );
+    SDL_RenderClear(ecran);
+    SDL_RenderCopy(ecran, fenMenu, NULL, &positionMenu);
+
+    SDL_SetRenderDrawBlendMode(ecran, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(ecran, 255, 255, 36, 70 );
+    SDL_RenderFillRect(ecran, &positionCursseur);
+
+
+    std::vector<SDL_Texture*> equipement_name_textures;
+    std::vector<SDL_Rect> equipement_name_rectangles;
+    
+    for(int i = 0; i < armeInventaire.size(); i++)
+    {
+        if(equipe[memberId]->GetArmeEquipable() == armeInventaire[i]->GetCategorie() && (cpt == 0 || cpt == 2 || cpt == 1))
+        {
+            equipement_name_textures.push_back(texteNomArme[i]);
+            equipement_name_rectangles.push_back(positionTexteNomArme[i]);
+            printf("memberId => %d can equip %s\n", memberId, texteNomArme[i]);
+        }
+    }
+
+    for(int i = 0; i < casqueInventaire.size(); i++)
+    {
+        if(equipe[memberId]->IsEquipable(casqueInventaire[i]->GetGenre()) && (cpt == 0 || cpt == 2 || cpt == 3))
+        {
+            equipement_name_textures.push_back(texteNomArmure[i]);
+            equipement_name_rectangles.push_back(positionTexteNomArmure[i]);
+        }
+    }
+
+    for(int i = 0; i < cuirasseInventaire.size(); i++)
+    {
+        if(equipe[memberId]->IsEquipable(cuirasseInventaire[i]->GetGenre()) && (cpt == 0 || cpt == 2 || cpt == 4))
+        {
+            equipement_name_textures.push_back(texteNomCuirasse[i]);
+            equipement_name_rectangles.push_back(positionTexteNomCuirasse[i]);
+        }
+    }
+
+    for(int i = 0; i < bouclierInventaire.size(); i++)
+    {
+        if(equipe[memberId]->IsEquipable(bouclierInventaire[i]->GetGenre()) && (cpt == 0 || cpt == 2) || cpt == 5)
+        {
+            equipement_name_textures.push_back(texteNomBouclier[i]);
+            equipement_name_rectangles.push_back(positionTexteNomBouclier[i]);
+        }
+    }
+
+    for(int i = 0; i < jambiereInventaire.size(); i++)
+    {
+        if(equipe[memberId]->IsEquipable(jambiereInventaire[i]->GetGenre()) && (cpt == 0 || cpt == 2) || cpt == 6)
+        {
+            equipement_name_textures.push_back(texteNomJambiere[i]);
+            equipement_name_rectangles.push_back(positionTexteNomJambiere[i]);
+        }
+    }
+
+    for(int i = 0; i < equipement_name_textures.size(); i++)
+    {
+        SDL_Rect customRectangle;
+        customRectangle.x = 0;
+        customRectangle.h = equipement_name_rectangles[i].h;
+        customRectangle.w = equipement_name_rectangles[i].w;
+
+        if(i==0)
+        {
+            customRectangle.y = (i + 1) *  265;
+        }
+        else
+        {
+            customRectangle.y = (i + 1) *  265 + 30;
+        }
+
+        //printf("pos x = %d | pos y = %d\n", customRectangle.x, customRectangle.y);
+        SDL_RenderCopy(ecran, equipement_name_textures[i], NULL, &customRectangle);
+    }
+
+
+    std::vector<Equipement> equipements = equipe[memberId]->GetArmureEquipe();
+
+    for(int j = 0; j < equipements.size(); j++)
+    {
+        if(memberId == MEMBRE1)
+        {
+            SDL_RenderCopy(ecran, texteStatNomArmureM0[j], NULL, &positionTexteStatNomArmure[j]);
+        }
+        if(memberId == MEMBRE2)
+        {
+            SDL_RenderCopy(ecran, texteStatNomArmureM1[j], NULL, &positionTexteStatNomArmure[j]);
+        }
+    }
+
+    SDL_RenderCopy(ecran, texteStatPv[memberId], NULL, &positionTexteStatPv[memberId]);
+    SDL_RenderCopy(ecran, texteStatPm[memberId], NULL, &positionTexteStatPm[memberId]);
+    SDL_RenderCopy(ecran, texteStatFr[memberId], NULL, &positionTexteStatFr[memberId]);
+    SDL_RenderCopy(ecran, texteStatDef[memberId], NULL, &positionTexteStatDef[memberId]);
+    SDL_RenderCopy(ecran, texteStatMag[memberId], NULL, &positionTexteStatMag[memberId]);
+    SDL_RenderCopy(ecran, texteStatVol[memberId], NULL, &positionTexteStatVol[memberId]);
+    SDL_RenderCopy(ecran, texteStatVit[memberId], NULL, &positionTexteStatVit[memberId]);
+    SDL_RenderCopy(ecran, texteStatPrc[memberId], NULL, &positionTexteStatPrc[memberId]);
+    SDL_RenderCopy(ecran, texteStatEsq[memberId], NULL, &positionTexteStatEsq[memberId]);
+    SDL_RenderCopy(ecran, texteStatCha[memberId], NULL, &positionTexteStatCha[memberId]);
+    SDL_RenderCopy(ecran, texteStatNomArme[memberId], NULL, &positionTexteStatNomArme[memberId]);
+    SDL_RenderCopy(ecran, texteStatPrenom[memberId], NULL, &positionTexteStatPrenom[memberId]);
+
+
+    for(int i = 0; i < 5; i++)
+    {
+        SDL_RenderCopy(ecran, texteEquipement[i], NULL, &positionTexteEquipement[i]);
+    }
+
+    SDL_SetRenderDrawColor(ecran, 255, 255, 255, SDL_ALPHA_OPAQUE);
+    SDL_RenderFillRect(ecran, &positionLigne);
+
+    for(int i = 0; i < 2; i++)
+    {
+        SDL_SetRenderDrawColor(ecran, 255, 255, 255, SDL_ALPHA_OPAQUE);
+        SDL_RenderFillRect(ecran, &positionLigneHorizontale[i]);  
+    }
+
+    SDL_RenderCopy(ecran, titreMenu, NULL, &positionTitreMenu);
+
+    for(int i = 0; i < 2; i++)
+    {
+        SDL_RenderCopy(ecran, optionEquipement[i], NULL, &positionOptionEquipement[i]);
+    }
+    
+    SDL_RenderCopy(ecran, tof, &clip[memberId], &positionTof);
+
+    if(flag == 1)
+    {
+        SDL_RenderCopy(ecran, InfoArmeFr, NULL, &positionInfoArmeFr);
+    }
+
+    if(flag == 2 || flag == 3 || flag == 4 || flag == 5 || flag == 6)
+    {
+        SDL_RenderCopy(ecran, InfoArmeDef, NULL, &positionInfoArmeDef);
+        SDL_RenderCopy(ecran, InfoArmeMag, NULL, &positionInfoArmeMag);
+    }
+   
+    SDL_RenderPresent(ecran);
 }
 

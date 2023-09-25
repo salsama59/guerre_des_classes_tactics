@@ -4,10 +4,8 @@
 #include"Jeu.h"
 #include"Menu.h"
 #include <freetype/freetype.h>
-#include FT_FREETYPE_H"
 #include <ft2build.h>
-#include <SDL/SDL_ttf.h>
-#include <fmodex/fmod.h>
+#include <SDL2/SDL_ttf.h>
 #include <string>
 
 class Inventaire: public Menu

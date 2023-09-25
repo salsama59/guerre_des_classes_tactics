@@ -1,6 +1,6 @@
 #include <cstdlib>
-#include <SDL/SDL.h>
-#include <SDL/SDL_image.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include "Objet.h"
 #include "Potion.h"
 #include <string>

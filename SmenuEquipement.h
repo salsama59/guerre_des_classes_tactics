@@ -5,8 +5,9 @@
 #include"Menu.h"
 #include <freetype/freetype.h>
 #include <ft2build.h>
-#include <SDL/SDL_ttf.h>
-#include <fmodex/fmod.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_mixer.h>
 #include <string>
 
 class SmenuEquipement: public Menu
@@ -26,37 +27,37 @@ class SmenuEquipement: public Menu
     char tableauInfoCuirasse[TAILLE_TAB_CONV];
     char tableauInfoBouclier[TAILLE_TAB_CONV];
     char tableauInfoJambiere[TAILLE_TAB_CONV];
-    SDL_Surface *optionEquipement[3];
-    SDL_Surface *texteStatFr[4];
-    SDL_Surface *texteStatDef[4];
-    SDL_Surface *texteStatMag[4];
-    SDL_Surface *texteStatVol[4];
-    SDL_Surface *texteStatVit[4];
-    SDL_Surface *texteStatPrc[4];
-    SDL_Surface *texteStatEsq[4];
-    SDL_Surface *texteStatCha[4];
-    SDL_Surface *InfoArmeFr;
-    SDL_Surface *InfoArmeDef;
-    SDL_Surface *InfoArmeMag;
-    SDL_Surface *InfoArmeVol;
-    SDL_Surface *InfoArmeVit;
-    SDL_Surface *InfoArmePrc;
-    SDL_Surface *InfoArmeEsq;
-    SDL_Surface *InfoArmeCha;
-    SDL_Surface *InfoArmePv;
-    SDL_Surface *InfoArmePm;
-    SDL_Surface *texteStatNom[4];
-    SDL_Surface *texteDegatArme[5];
-    SDL_Surface *texteNomArme[5];
-    SDL_Surface *texteNomArmure[5];
-    SDL_Surface *texteNomCuirasse[5];
-    SDL_Surface *texteNomBouclier[5];
-    SDL_Surface *texteNomJambiere[5];
-    SDL_Surface *texteStatNomArme[5];
-    SDL_Surface *texteStatNomArmureM0[4];
-    SDL_Surface *texteStatNomArmureM1[4];
-    SDL_Surface *texteEquipement[5];
-    SDL_Surface *ligneHorizontale[4];
+    SDL_Texture *optionEquipement[3];
+    SDL_Texture *texteStatFr[4];
+    SDL_Texture *texteStatDef[4];
+    SDL_Texture *texteStatMag[4];
+    SDL_Texture *texteStatVol[4];
+    SDL_Texture *texteStatVit[4];
+    SDL_Texture *texteStatPrc[4];
+    SDL_Texture *texteStatEsq[4];
+    SDL_Texture *texteStatCha[4];
+    SDL_Texture *InfoArmeFr;
+    SDL_Texture *InfoArmeDef;
+    SDL_Texture *InfoArmeMag;
+    SDL_Texture *InfoArmeVol;
+    SDL_Texture *InfoArmeVit;
+    SDL_Texture *InfoArmePrc;
+    SDL_Texture *InfoArmeEsq;
+    SDL_Texture *InfoArmeCha;
+    SDL_Texture *InfoArmePv;
+    SDL_Texture *InfoArmePm;
+    SDL_Texture *texteStatNom[4];
+    SDL_Texture *texteDegatArme[5];
+    SDL_Texture *texteNomArme[5];
+    SDL_Texture *texteNomArmure[5];
+    SDL_Texture *texteNomCuirasse[5];
+    SDL_Texture *texteNomBouclier[5];
+    SDL_Texture *texteNomJambiere[5];
+    SDL_Texture *texteStatNomArme[5];
+    SDL_Texture *texteStatNomArmureM0[4];
+    SDL_Texture *texteStatNomArmureM1[4];
+    SDL_Texture *texteEquipement[5];
+    SDL_Texture *ligneHorizontale[4];
     SDL_Rect positionOptionEquipement[3];
     SDL_Rect positionTexteStatFr[4];
     SDL_Rect positionTexteStatDef[4];
@@ -92,9 +93,12 @@ class SmenuEquipement: public Menu
 
     public:
 
-    SmenuEquipement(SDL_Surface *ecran);
+    SmenuEquipement(SDL_Renderer *ecran);
     ~SmenuEquipement();
-    void AffichageEquipement(std::vector<Personnage*> equipe, SDL_Surface *ecran, std::vector<Arme*> armeInventaire, std::vector<Casque*> casqueInventaire, std::vector<Cuirasse*> cuirasseInventaire, std::vector<Bouclier*> bouclierInventaire, std::vector<Jambiere*> jambiereInventaire, Jeu *obj);
+    void AffichageEquipement(std::vector<Personnage*> equipe, SDL_Renderer *ecran, std::vector<Arme*> armeInventaire, std::vector<Casque*> casqueInventaire, std::vector<Cuirasse*> cuirasseInventaire, std::vector<Bouclier*> bouclierInventaire, std::vector<Jambiere*> jambiereInventaire, Jeu *obj);
+
+    private:
+    void DisplayMenuElements(std::vector<Personnage*> equipe, std::vector<Arme*> armeInventaire, std::vector<Casque*> casqueInventaire, std::vector<Cuirasse*> cuirasseInventaire, std::vector<Bouclier*> bouclierInventaire, std::vector<Jambiere*> jambiereInventaire, int memberId, SDL_Renderer *ecran, int cpt, int flag);
 
 };
 

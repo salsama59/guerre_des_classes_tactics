@@ -2,6 +2,7 @@
 #define DEF_GANT
 
 #include <string>
+#include "Arme.h"
 
 class Gant : public Arme
 {
