@@ -1,22 +1,22 @@
 #include <cstdlib>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
-#include "Objet.h"
-#include "Potion.h"
+#include "item.h"
+#include "potion.h"
 #include <string>
 #include <iostream>
 using namespace std;
 
-Potion::Potion(): Objet()
+Potion::Potion() : Item()
 {
-    nom="Elixir";
-    effet=50;
-    action="PV";
+    name = "Elixir";
+    effect = 50;
+    action = "PV";
 }
 
-int Potion::GetEffet()
+int Potion::GetEffect()
 {
-    return effet;
+    return effect;
 }
 
 std::string Potion::GetAction()

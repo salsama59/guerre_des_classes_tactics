@@ -1,18 +1,17 @@
 #ifndef DEF_POTION
 #define DEF_POTION
-#include "Objet.h"
+#include "item.h"
 #include <string>
 
-class Potion: public Objet
+class Potion : public Item
 {
-    private:
-
-    int effet;
+private:
+    int effect;
     std::string action;
-    public:
 
+public:
     Potion();
-    int GetEffet();
+    int GetEffect();
     std::string GetAction();
 };
 
