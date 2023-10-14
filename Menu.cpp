@@ -1,450 +1,453 @@
 #include <cstdlib>
-#include <SDL/SDL.h>
-#include <SDL/SDL_image.h>
-#include <SDL/SDL_ttf.h>
-#include <fmodex/fmod.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_mixer.h>
 #include <ft2build.h>
-#include "Menu.h"
-#include "Jeu.h"
-#include "Personnage.h"
-#include "Etat.h"
-#include "Groupe.h"
-#include "SmenuEquipement.h"
+#include "menu.h"
+#include "game.h"
+#include "character.h"
+#include "statusMenu.h"
+#include "partyMenu.h"
+#include "equipmentMenu.h"
 #include <string>
 #include <iostream>
 #include <vector>
 using namespace std;
 
-Menu::Menu(Jeu &j)
+Menu::Menu(Game &game)
 {
-    largeur=LARGEUR;
-    hauteur=HAUTEUR;
-    //Récupération du pointeur vers la fenêtre utilisé
-    ecran=j.GetFen();
-    //Modification de la couleur de fond
-    couleur= SDL_MapRGB(ecran->format, 180, 180, 180);
-    //On créé un fond qui fera office de menu
-    fenMenu = SDL_CreateRGBSurface(SDL_HWSURFACE, largeur, hauteur, 32, 0, 0, 0, 0);
-    //On définie les coordonnées du menu
-    positionMenu.x=0;
-    positionMenu.y=0;
-    //Modification de la couleur du fond
-    SDL_FillRect(fenMenu, NULL, couleur);
-    //Initialisation de FMOD (création du système de son)
-    FMOD_System_Create(&system);
-    FMOD_System_Init(system, 3, FMOD_INIT_NORMAL, NULL);
-    //on créé des sample de son afin de les utiliser plus tard
-    FMOD_System_CreateSound(system, "deplacement.mp3", FMOD_CREATESAMPLE, 0, &sonDeplacement);
-    FMOD_System_CreateSound(system, "validation.wav", FMOD_CREATESAMPLE, 0, &sonValidation);
-    FMOD_System_CreateSound(system, "annulation.wav", FMOD_CREATESAMPLE, 0, &sonAnnulation);
-    FMOD_System_CreateSound(system, "Menu.mp3", FMOD_CREATESAMPLE, 0, &sonMenu);
-    //On récupère les informations liés au cannaux
-    FMOD_System_GetChannel(system, 1, &channel);
+    renderer = game.getRenderer();
+    menuPosition.x = 0;
+    menuPosition.y = 0;
+    menuTexture = SDL_CreateTexture(renderer,
+                                    SDL_PIXELFORMAT_ARGB8888,
+                                    SDL_TEXTUREACCESS_STREAMING,
+                                    MAXIMUM_SCREEN_WIDTH, MAXIMUM_SCREEN_HEIGHT);
+
+    SDL_AudioSpec audioSpec;
+    audioSpec.freq = MIX_DEFAULT_FREQUENCY;
+    audioSpec.format = MIX_DEFAULT_FORMAT;
+    audioSpec.channels = MIX_DEFAULT_CHANNELS;
+    int channelNumber = 4;
+    if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 15) < 0)
+    {
+        SDL_Log("Couldn't open audio: %s\n", SDL_GetError());
+        exit(2);
+    }
+    else
+    {
+        Mix_QuerySpec(&audioSpec.freq, &audioSpec.format, &channelNumber);
+        SDL_Log("Opened audio at %d Hz %d bit%s %s audio buffer\n", audioSpec.freq,
+                (audioSpec.format & 0xFF),
+                (SDL_AUDIO_ISFLOAT(audioSpec.format) ? " (float)" : ""),
+                (audioSpec.channels > 2) ? "surround" : (audioSpec.channels > 1) ? "stereo"
+                                                                                 : "mono");
+    }
+
+    /* Set the music volume */
+    Mix_VolumeMusic(MIX_MAX_VOLUME);
+
+    moveSound = Mix_LoadWAV("deplacement.mp3");
+
+    if (moveSound == NULL)
+    {
+        SDL_Log("Couldn't open audio file %s : %s\n", "deplacement.mp3", SDL_GetError());
+        exit(2);
+    }
+
+    validationSound = Mix_LoadWAV("validation.wav");
+
+    if (validationSound == NULL)
+    {
+        SDL_Log("Couldn't open audio file %s : %s\n", "validation.wav", SDL_GetError());
+        exit(2);
+    }
+
+    cancelationSound = Mix_LoadWAV("annulation.wav");
+
+    if (cancelationSound == NULL)
+    {
+        SDL_Log("Couldn't open audio file %s : %s\n", "annulation.wav", SDL_GetError());
+        exit(2);
+    }
+
+    menuOpeningSound = Mix_LoadWAV("Menu.mp3");
+
+    if (menuOpeningSound == NULL)
+    {
+        SDL_Log("Couldn't open audio file %s : %s\n", "Menu.mp3", SDL_GetError());
+        exit(2);
+    }
 }
 
 Menu::Menu()
 {
-
-}
-//Destructeur de la classe Menu
-Menu:: ~Menu()
-{
-    FMOD_System_Close(system);
-    FMOD_System_Release(system);
-    FMOD_Sound_Release(sonDeplacement);
-    FMOD_Sound_Release(sonValidation);
-    FMOD_Sound_Release(sonAnnulation);
-    FMOD_Sound_Release(sonMenu);
 }
 
-void Menu::ChangerCouleur(int r, int v, int b)
+Menu::~Menu()
 {
-    couleur= SDL_MapRGB(ecran->format, r, v, b);
+    Mix_CloseAudio();
+    Mix_FreeChunk(moveSound);
+    Mix_FreeChunk(validationSound);
+    Mix_FreeChunk(cancelationSound);
+    Mix_FreeChunk(menuOpeningSound);
 }
 
-void Menu::EmissionSonDeplacement()
+void Menu::playMovementSound()
 {
-    FMOD_System_PlaySound(system, FMOD_CHANNEL_FREE, sonDeplacement, 0, NULL);
+    SDL_Log("Playing %s\n", "deplacement.mp3");
+    Mix_PlayChannel(0, moveSound, 0);
 }
 
-void Menu::EmissionSonValidation()
+void Menu::playValidationSound()
 {
-    FMOD_System_PlaySound(system, FMOD_CHANNEL_FREE, sonValidation, 0, NULL);
+    SDL_Log("Playing %s\n", "validation.wav");
+    Mix_PlayChannel(0, validationSound, 0);
 }
 
-void Menu::EmissionSonAnnulation()
+void Menu::playCancelSound()
 {
-    FMOD_System_PlaySound(system, FMOD_CHANNEL_FREE, sonAnnulation, 0, NULL);
+    SDL_Log("Playing %s\n", "annulation.wav");
+    Mix_PlayChannel(0, cancelationSound, 0);
 }
 
-void Menu::EmissionSonMenu()
+void Menu::playMainMenuOpeningSound()
 {
-    FMOD_System_PlaySound(system, FMOD_CHANNEL_FREE, sonMenu, 0, NULL);
+    SDL_Log("Playing %s\n", "Menu.mp3");
+    Mix_PlayChannel(0, menuOpeningSound, 0);
 }
 
-void Menu::AffichageMenu(std::vector<Personnage*> equipe, std::vector<Personnage*> groupe, SDL_Surface *ecran, std::vector<Arme*> armeInventaire, std::vector<Casque*> casqueInventaire, std::vector<Cuirasse*> cuirasseInventaire, std::vector<Bouclier*> bouclierInventaire, std::vector<Jambiere*> jambiereInventaire, Jeu *obj)
+void Menu::displayMainMenu(std::vector<Character *> team, std::vector<Character *> party, SDL_Renderer *renderer, std::vector<Weapon *> weaponsInventory, std::vector<Helmet *> helmetsInventory, std::vector<BodyArmor *> armorsInventory, std::vector<Shield *> shieldInventory, std::vector<Boots *> bootsInventory, Game *game)
 {
-    //On instancie un objet de type Etat
-    Etat *e=new Etat(ecran);
-    //On instancie un objet de type SmenuEquipement
-    SmenuEquipement *sme=new SmenuEquipement(ecran);
-    //On instancie un objet de type Groupe
-    Groupe *g=new Groupe(ecran);
 
-    int cycle=1, init=0, i=0, t=0, j=0, taille=0;
-    //On définie la taille des tableaux
-    taille=equipe.size();
-    int pv[taille], pm[taille], exp[taille], suivant[taille], maxPv[taille], maxPm[taille], niv[taille];
-    std::string prenom[taille];
-    //Initialisation de la bibliothèque SDL_TTF
-    init=TTF_Init();
-    //En cas d'erreur
-    if(init == -1)
+    StatusMenu *statusMenu = new StatusMenu(renderer);
+    EquipmentMenu *equipmentMenu = new EquipmentMenu(renderer);
+    PartyMenu *partyMenu = new PartyMenu(renderer);
+
+    bool isWaitingInputs = true;
+    int trueTypeFontInitializationResult = 0, menuCurssorIndex = 0, teamSize = 0;
+
+    teamSize = team.size();
+    printf(" size is : %d", teamSize);
+    int hitPoints[teamSize], magicPoints[teamSize], experiencePoints[teamSize], nextLevelExperiencePoints[teamSize], maximumHitPoints[teamSize], maximumMagicPoints[teamSize], levels[teamSize];
+    std::string firstName[teamSize];
+
+    trueTypeFontInitializationResult = TTF_Init();
+
+    if (trueTypeFontInitializationResult == -1)
     {
-        //On récupère le descriptif de l'érreur et on l'affiche sur la sortie standard
-        fprintf(stderr, "Erreur d'initialisation de TTF_Init : %s\n", TTF_GetError());
+        fprintf(stderr, "An error occured during SDL_TTF initialization for the following reason : %s\n", TTF_GetError());
         exit(EXIT_FAILURE);
         atexit(TTF_Quit);
     }
-    //Tableau contenant les intitulés de chaque sous menu
-    const char* tab[9]= {"Inventaire", "Equipement", "Etat", "Groupe", "Competences", "Sauvegarder", "Charger", "Options", "Sortie"};
-    vector<string> elements(9);
-    t=elements.size();
-    //on charge la police
-    police = TTF_OpenFont("arial.ttf", 30);
-    police2 = TTF_OpenFont("arial.ttf", 15);
-    //On définie la couleur de la police
-    couleurCarac = {255, 255, 255};
-    //On défini les effets sur la police
-    TTF_SetFontStyle(police2, TTF_STYLE_BOLD);
 
-    for(i=0; i < t; i++)
+    const char *menuItemArray[9] = {"Inventory", "Equipments", "Status", "Party", "Abilities", "Save", "Load", "Options", "Exit"};
+    vector<string> menuItems(9);
+
+    mainArialFont = TTF_OpenFont("arial.ttf", 30);
+    secondaryArialFont = TTF_OpenFont("arial.ttf", 15);
+    fontColor = {255, 255, 255};
+
+    TTF_SetFontStyle(secondaryArialFont, TTF_STYLE_BOLD);
+
+    for (int i = 0; i < menuItems.size(); i++)
     {
-        elements[i]=tab[i];
-        texte[i] = TTF_RenderText_Blended(police, elements[i].c_str(), couleurCarac);
-        positionTexte[i].x=0;
-        positionTexte[i].y=i*50;
+        menuItems[i] = menuItemArray[i];
+        menuItemTextTexture[i] = SDL_CreateTextureFromSurface(renderer, TTF_RenderText_Blended(mainArialFont, menuItems[i].c_str(), fontColor));
+        int mainMenuItemWidth = 0;
+        int mainMenuItemHeight = 0;
+        TTF_SizeText(mainArialFont, menuItems[i].c_str(), &mainMenuItemWidth, &mainMenuItemHeight);
+        menuItemTextTexturePosition[i].x = 0;
+        menuItemTextTexturePosition[i].y = i * 50;
+        menuItemTextTexturePosition[i].w = mainMenuItemWidth;
+        menuItemTextTexturePosition[i].h = mainMenuItemHeight;
     }
 
-    for(i=0; i <taille; i++)
+    for (int i = 0; i < teamSize; i++)
     {
-        if(i==MEMBRE1)
-        {
-            niv[i]=equipe[i]->GetNiv();
-            prenom[i]=equipe[i]->GetPrenom();
-            pv[i]=equipe[i]->GetPv();
-            pm[i]=equipe[i]->GetPm();
-            maxPv[i]=equipe[i]->GetMaxPv();
-            maxPm[i]=equipe[i]->GetMaxPm();
-            exp[i]=equipe[i]->GetExp();
-            suivant[i]=equipe[i]->GetSeuil();
-            sprintf(tableauPv, "PV : %d / %d", pv[i], maxPv[i]);
-            sprintf(tableauPm, "PM : %d / %d", pm[i], maxPm[i]);
-            sprintf(tableauExp, "Experience %d / %d", exp[i], suivant[i]);
-            sprintf(tableauNiv, "Niveau : %d", niv[i]);
-            texteStatPrenom[i] = TTF_RenderText_Blended(police2, prenom[i].c_str(), couleurCarac);
-            positionTexteStatPrenom[i].x=(largeur/2)+90;
-            positionTexteStatPrenom[i].y=10;
-            texteStatNiv[i] = TTF_RenderText_Blended(police2, tableauNiv, couleurCarac);
-            positionTexteStatNiv[i].x=(largeur/2)+90;
-            positionTexteStatNiv[i].y=30;
-            texteStatPv[i] = TTF_RenderText_Blended(police2, tableauPv, couleurCarac);
-            positionTexteStatPv[i].x=(largeur/2)+90;
-            positionTexteStatPv[i].y=50;
-            texteStatPm[i] = TTF_RenderText_Blended(police2, tableauPm, couleurCarac);
-            positionTexteStatPm[i].x=(largeur/2)+90;
-            positionTexteStatPm[i].y=70;
-            texteStatExp[i] = TTF_RenderText_Blended(police2, tableauExp, couleurCarac);
-            positionTexteStatExp[i].x=(largeur/2)+90;
-            positionTexteStatExp[i].y=90;
-        }
-        else if(i==MEMBRE2)
-        {
-            niv[i]=equipe[i]->GetNiv();
-            prenom[i]=equipe[i]->GetPrenom();
-            pv[i]=equipe[i]->GetPv();
-            pm[i]=equipe[i]->GetPm();
-            maxPv[i]=equipe[i]->GetMaxPv();
-            maxPm[i]=equipe[i]->GetMaxPm();
-            exp[i]=equipe[i]->GetExp();
-            suivant[i]=equipe[i]->GetSeuil();
-            sprintf(tableauPv, "PV : %d / %d", pv[i], maxPv[i]);
-            sprintf(tableauPm, "PM : %d / %d", pm[i], maxPm[i]);
-            sprintf(tableauExp, "Experience %d / %d", exp[i], suivant[i]);
-            sprintf(tableauNiv, "Niveau : %d", niv[i]);
-            texteStatPrenom[i] = TTF_RenderText_Blended(police2, prenom[i].c_str(), couleurCarac);
-            positionTexteStatPrenom[i].x=(largeur/2)+90;
-            positionTexteStatPrenom[i].y=130;
-            texteStatNiv[i] = TTF_RenderText_Blended(police2, tableauNiv, couleurCarac);
-            positionTexteStatNiv[i].x=(largeur/2)+90;
-            positionTexteStatNiv[i].y=150;
-            texteStatPv[i] = TTF_RenderText_Blended(police2, tableauPv, couleurCarac);
-            positionTexteStatPv[i].x=(largeur/2)+90;
-            positionTexteStatPv[i].y=170;
-            texteStatPm[i] = TTF_RenderText_Blended(police2, tableauPm, couleurCarac);
-            positionTexteStatPm[i].x=(largeur/2)+90;
-            positionTexteStatPm[i].y=190;
-            texteStatExp[i] = TTF_RenderText_Blended(police2, tableauExp, couleurCarac);
-            positionTexteStatExp[i].x=(largeur/2)+90;
-            positionTexteStatExp[i].y=210;
-        }
-        else if(i==MEMBRE3)
-        {
-            niv[i]=equipe[i]->GetNiv();
-            prenom[i]=equipe[i]->GetPrenom();
-            pv[i]=equipe[i]->GetPv();
-            pm[i]=equipe[i]->GetPm();
-            maxPv[i]=equipe[i]->GetMaxPv();
-            maxPm[i]=equipe[i]->GetMaxPm();
-            exp[i]=equipe[i]->GetExp();
-            suivant[i]=equipe[i]->GetSeuil();
-            sprintf(tableauPv, "PV : %d / %d", pv[i], maxPv[i]);
-            sprintf(tableauPm, "PM : %d / %d", pm[i], maxPm[i]);
-            sprintf(tableauExp, "Experience %d / %d", exp[i], suivant[i]);
-            sprintf(tableauNiv, "Niveau : %d", niv[i]);
-            texteStatPrenom[i] = TTF_RenderText_Blended(police2, prenom[i].c_str(), couleurCarac);
-            positionTexteStatPrenom[i].x=(largeur/2)+90;
-            positionTexteStatPrenom[i].y=250;
-            texteStatNiv[i] = TTF_RenderText_Blended(police2, tableauNiv, couleurCarac);
-            positionTexteStatNiv[i].x=(largeur/2)+90;
-            positionTexteStatNiv[i].y=270;
-            texteStatPv[i] = TTF_RenderText_Blended(police2, tableauPv, couleurCarac);
-            positionTexteStatPv[i].x=(largeur/2)+90;
-            positionTexteStatPv[i].y=290;
-            texteStatPm[i] = TTF_RenderText_Blended(police2, tableauPm, couleurCarac);
-            positionTexteStatPm[i].x=(largeur/2)+90;
-            positionTexteStatPm[i].y=310;
-            texteStatExp[i] = TTF_RenderText_Blended(police2, tableauExp, couleurCarac);
-            positionTexteStatExp[i].x=(largeur/2)+90;
-            positionTexteStatExp[i].y=330;
-        }
-        else if(i==MEMBRE4)
-        {
-            niv[i]=equipe[i]->GetNiv();
-            prenom[i]=equipe[i]->GetPrenom();
-            pv[i]=equipe[i]->GetPv();
-            pm[i]=equipe[i]->GetPm();
-            maxPv[i]=equipe[i]->GetMaxPv();
-            maxPm[i]=equipe[i]->GetMaxPm();
-            exp[i]=equipe[i]->GetExp();
-            suivant[i]=equipe[i]->GetSeuil();
-            sprintf(tableauPv, "PV : %d / %d", pv[i], maxPv[i]);
-            sprintf(tableauPm, "PM : %d / %d", pm[i], maxPm[i]);
-            sprintf(tableauExp, "Experience %d / %d", exp[i], suivant[i]);
-            sprintf(tableauNiv, "Niveau : %d", niv[i]);
-            texteStatPrenom[i] = TTF_RenderText_Blended(police2, prenom[i].c_str(), couleurCarac);
-            positionTexteStatPrenom[i].x=(largeur/2)+90;
-            positionTexteStatPrenom[i].y=370;
-            texteStatNiv[i] = TTF_RenderText_Blended(police2, tableauNiv, couleurCarac);
-            positionTexteStatNiv[i].x=(largeur/2)+90;
-            positionTexteStatNiv[i].y=390;
-            texteStatPv[i] = TTF_RenderText_Blended(police2, tableauPv, couleurCarac);
-            positionTexteStatPv[i].x=(largeur/2)+90;
-            positionTexteStatPv[i].y=410;
-            texteStatPm[i] = TTF_RenderText_Blended(police2, tableauPm, couleurCarac);
-            positionTexteStatPm[i].x=(largeur/2)+90;
-            positionTexteStatPm[i].y=430;
-            texteStatExp[i] = TTF_RenderText_Blended(police2, tableauExp, couleurCarac);
-            positionTexteStatExp[i].x=(largeur/2)+90;
-            positionTexteStatExp[i].y=450;
-        }
+        int partyStatisticTextWidth = 0;
+        int partyStatisticTextHeight = 0;
 
+        levels[i] = team[i]->getLevel();
+        firstName[i] = team[i]->getFirstName();
+        hitPoints[i] = team[i]->getHitPoints();
+        magicPoints[i] = team[i]->getMagicPoints();
+        maximumHitPoints[i] = team[i]->getMaximumHitPoints();
+        maximumMagicPoints[i] = team[i]->getMaximumMagicPoints();
+        experiencePoints[i] = team[i]->getExperience();
+        nextLevelExperiencePoints[i] = team[i]->getNextLevelExperiencePoints();
+        sprintf(maximumHitPointValueArray, "HP : %d / %d", hitPoints[i], maximumHitPoints[i]);
+        sprintf(maximumMagicPointValueArray, "MP : %d / %d", magicPoints[i], maximumMagicPoints[i]);
+        sprintf(experienceArray, "Experience %d / %d", experiencePoints[i], nextLevelExperiencePoints[i]);
+        sprintf(levelArray, "Level : %d", levels[i]);
+        firstNameStatisticTextTexture[i] = SDL_CreateTextureFromSurface(renderer, TTF_RenderText_Blended(secondaryArialFont, firstName[i].c_str(), fontColor));
+        TTF_SizeText(secondaryArialFont, firstName[i].c_str(), &partyStatisticTextWidth, &partyStatisticTextHeight);
+        firstNameStatisticTextTexturePosition[i].x = (MAXIMUM_SCREEN_WIDTH / 2) + 90;
+        firstNameStatisticTextTexturePosition[i].h = partyStatisticTextHeight;
+        firstNameStatisticTextTexturePosition[i].w = partyStatisticTextWidth;
+        levelStatisticTextTexture[i] = SDL_CreateTextureFromSurface(renderer, TTF_RenderText_Blended(secondaryArialFont, levelArray, fontColor));
+        TTF_SizeText(secondaryArialFont, levelArray, &partyStatisticTextWidth, &partyStatisticTextHeight);
+        levelStatisticTextTexturePosition[i].x = (MAXIMUM_SCREEN_WIDTH / 2) + 90;
+        levelStatisticTextTexturePosition[i].h = partyStatisticTextHeight;
+        levelStatisticTextTexturePosition[i].w = partyStatisticTextWidth;
+        hitPointsStatisticTextTexture[i] = SDL_CreateTextureFromSurface(renderer, TTF_RenderText_Blended(secondaryArialFont, maximumHitPointValueArray, fontColor));
+        TTF_SizeText(secondaryArialFont, maximumHitPointValueArray, &partyStatisticTextWidth, &partyStatisticTextHeight);
+        hitPointsStatisticTextTexturePosition[i].x = (MAXIMUM_SCREEN_WIDTH / 2) + 90;
+        hitPointsStatisticTextTexturePosition[i].h = partyStatisticTextHeight;
+        hitPointsStatisticTextTexturePosition[i].w = partyStatisticTextWidth;
+        magicPointsStatisticTextTexture[i] = SDL_CreateTextureFromSurface(renderer, TTF_RenderText_Blended(secondaryArialFont, maximumMagicPointValueArray, fontColor));
+        TTF_SizeText(secondaryArialFont, maximumMagicPointValueArray, &partyStatisticTextWidth, &partyStatisticTextHeight);
+        magicPointsStatisticTextTexturePosition[i].x = (MAXIMUM_SCREEN_WIDTH / 2) + 90;
+        magicPointsStatisticTextTexturePosition[i].h = partyStatisticTextHeight;
+        magicPointsStatisticTextTexturePosition[i].w = partyStatisticTextWidth;
+        experienceStatisticTextTexture[i] = SDL_CreateTextureFromSurface(renderer, TTF_RenderText_Blended(secondaryArialFont, experienceArray, fontColor));
+        TTF_SizeText(secondaryArialFont, experienceArray, &partyStatisticTextWidth, &partyStatisticTextHeight);
+        experienceStatisticTextTextureposition[i].x = (MAXIMUM_SCREEN_WIDTH / 2) + 90;
+        experienceStatisticTextTextureposition[i].h = partyStatisticTextHeight;
+        experienceStatisticTextTextureposition[i].w = partyStatisticTextWidth;
+
+        if (i == FIRST_TEAM_MEMBER)
+        {
+            firstNameStatisticTextTexturePosition[i].y = 10;
+            levelStatisticTextTexturePosition[i].y = 30;
+            hitPointsStatisticTextTexturePosition[i].y = 50;
+            magicPointsStatisticTextTexturePosition[i].y = 70;
+            experienceStatisticTextTextureposition[i].y = 90;
+        }
+        else if (i == SECOND_TEAM_MEMBER)
+        {
+            firstNameStatisticTextTexturePosition[i].y = 130;
+            levelStatisticTextTexturePosition[i].y = 150;
+            hitPointsStatisticTextTexturePosition[i].y = 170;
+            magicPointsStatisticTextTexturePosition[i].y = 190;
+            experienceStatisticTextTextureposition[i].y = 210;
+        }
+        else if (i == THIRD_TEAM_MEMBER)
+        {
+            firstNameStatisticTextTexturePosition[i].y = 250;
+            levelStatisticTextTexturePosition[i].y = 270;
+            hitPointsStatisticTextTexturePosition[i].y = 290;
+            magicPointsStatisticTextTexturePosition[i].y = 310;
+            experienceStatisticTextTextureposition[i].y = 330;
+        }
+        else if (i == FOURTH_TEAM_MEMBER)
+        {
+            firstNameStatisticTextTexturePosition[i].y = 370;
+            levelStatisticTextTexturePosition[i].y = 390;
+            hitPointsStatisticTextTexturePosition[i].y = 410;
+            magicPointsStatisticTextTexturePosition[i].y = 430;
+            experienceStatisticTextTextureposition[i].y = 450;
+        }
     }
 
-    couleurCursseur= SDL_MapRGB(ecran->format, 255, 255, 36);
-    positionCursseur.w=185;
-    positionCursseur.h=35;
-    positionCursseur.x=0;
-    positionCursseur.y=0;
-    cursseur= SDL_CreateRGBSurface(SDL_HWSURFACE, positionCursseur.w, positionCursseur.h, 32, 0, 0, 0, 0);
-    SDL_FillRect(cursseur, NULL, couleurCursseur);
-    SDL_SetAlpha(cursseur, SDL_SRCALPHA, 70);
-    positionLigne.x = largeur/2;
-    positionLigne.y = 0;
-    positionLigne.w = 2;
-    positionLigne.h = hauteur;
-    ligne= SDL_CreateRGBSurface(SDL_HWSURFACE, positionLigne.w, positionLigne.h, NB_BITS_PAR_PIXEL, 0, 0, 0, 0);
-    couleurLigne= SDL_MapRGB(ecran->format, 255, 255, 255);
-    SDL_FillRect(ligne, NULL, couleurLigne);
+    curssorPosition.w = 185;
+    curssorPosition.h = 35;
+    curssorPosition.x = 0;
+    curssorPosition.y = 0;
 
-    for(i=0; i<4; i++)
+    linePosition.x = MAXIMUM_SCREEN_WIDTH / 2;
+    linePosition.y = 0;
+    linePosition.w = 2;
+    linePosition.h = MAXIMUM_SCREEN_HEIGHT;
+
+    for (int i = 0; i < 4; i++)
     {
-        if(i==0)
+        if (i == 0)
         {
-            positionLigneHorizontale[i].x = largeur/2;
-            positionLigneHorizontale[i].y = hauteur/4;
-            positionLigneHorizontale[i].w = largeur/2;
-            positionLigneHorizontale[i].h = 2;
-            ligneHorizontale[i]= SDL_CreateRGBSurface(SDL_HWSURFACE, positionLigneHorizontale[i].w, positionLigneHorizontale[i].h, NB_BITS_PAR_PIXEL, 0, 0, 0, 0);
-            SDL_FillRect(ligneHorizontale[i], NULL, couleurLigne);
+            horizontalLinePosition[i].x = MAXIMUM_SCREEN_WIDTH / 2;
+            horizontalLinePosition[i].y = MAXIMUM_SCREEN_HEIGHT / 4;
+            horizontalLinePosition[i].w = MAXIMUM_SCREEN_WIDTH / 2;
+            horizontalLinePosition[i].h = 2;
         }
         else
         {
-            positionLigneHorizontale[i].x = largeur/2;
-            positionLigneHorizontale[i].y = i*(hauteur/4);
-            positionLigneHorizontale[i].w = largeur/2;
-            positionLigneHorizontale[i].h = 2;
-            ligneHorizontale [i]= SDL_CreateRGBSurface(SDL_HWSURFACE, positionLigneHorizontale[i].w, positionLigneHorizontale[i].h, NB_BITS_PAR_PIXEL, 0, 0, 0, 0);
-            SDL_FillRect(ligneHorizontale[i], NULL, couleurLigne);
+            horizontalLinePosition[i].x = MAXIMUM_SCREEN_WIDTH / 2;
+            horizontalLinePosition[i].y = i * (MAXIMUM_SCREEN_HEIGHT / 4);
+            horizontalLinePosition[i].w = MAXIMUM_SCREEN_WIDTH / 2;
+            horizontalLinePosition[i].h = 2;
         }
     }
 
-    positionTof[MEMBRE1].x = (largeur/2)+12;
-    positionTof[MEMBRE1].y = 30;
-    positionTof[MEMBRE2].x = (largeur/2)+12;
-    positionTof[MEMBRE2].y = 150;
-    positionTof[MEMBRE3].x = (largeur/2)+12;
-    positionTof[MEMBRE3].y = 270;
-    positionTof[MEMBRE4].x = (largeur/2)+12;
-    positionTof[MEMBRE4].y = 390;
-    tof = IMG_Load("tof.png");
-    clip[MEMBRE1].x=0;
-    clip[MEMBRE1].y=0;
-    clip[MEMBRE1].w=192/4;
-    clip[MEMBRE1].h=192/4;
+    characterPortraitSpriteSheetTexturePositions[FIRST_TEAM_MEMBER].x = (MAXIMUM_SCREEN_WIDTH / 2) + 12;
+    characterPortraitSpriteSheetTexturePositions[FIRST_TEAM_MEMBER].y = 30;
+    characterPortraitSpriteSheetTexturePositions[FIRST_TEAM_MEMBER].w = 64;
+    characterPortraitSpriteSheetTexturePositions[FIRST_TEAM_MEMBER].h = 64;
+    characterPortraitSpriteSheetTexturePositions[SECOND_TEAM_MEMBER].x = (MAXIMUM_SCREEN_WIDTH / 2) + 12;
+    characterPortraitSpriteSheetTexturePositions[SECOND_TEAM_MEMBER].y = 150;
+    characterPortraitSpriteSheetTexturePositions[SECOND_TEAM_MEMBER].w = 64;
+    characterPortraitSpriteSheetTexturePositions[SECOND_TEAM_MEMBER].h = 64;
+    characterPortraitSpriteSheetTexturePositions[THIRD_TEAM_MEMBER].x = (MAXIMUM_SCREEN_WIDTH / 2) + 12;
+    characterPortraitSpriteSheetTexturePositions[THIRD_TEAM_MEMBER].y = 270;
+    characterPortraitSpriteSheetTexturePositions[THIRD_TEAM_MEMBER].w = 64;
+    characterPortraitSpriteSheetTexturePositions[THIRD_TEAM_MEMBER].h = 64;
+    characterPortraitSpriteSheetTexturePositions[FOURTH_TEAM_MEMBER].x = (MAXIMUM_SCREEN_WIDTH / 2) + 12;
+    characterPortraitSpriteSheetTexturePositions[FOURTH_TEAM_MEMBER].y = 390;
+    characterPortraitSpriteSheetTexturePositions[FOURTH_TEAM_MEMBER].w = 64;
+    characterPortraitSpriteSheetTexturePositions[FOURTH_TEAM_MEMBER].h = 64;
+    characterPortraitSpriteSheetTexture = SDL_CreateTextureFromSurface(renderer, IMG_Load("tof.png"));
 
-    clip[MEMBRE2].x=3*192/4;
-    clip[MEMBRE2].y=0;
-    clip[MEMBRE2].w=192/4;
-    clip[MEMBRE2].h=192/4;
+    characterPortraitClipPositions[FIRST_TEAM_MEMBER].x = 0;
+    characterPortraitClipPositions[FIRST_TEAM_MEMBER].y = 0;
+    characterPortraitClipPositions[FIRST_TEAM_MEMBER].w = 192 / 4;
+    characterPortraitClipPositions[FIRST_TEAM_MEMBER].h = 192 / 4;
 
-    clip[MEMBRE3].x=2*192/4;
-    clip[MEMBRE3].y=0;
-    clip[MEMBRE3].w=192/4;
-    clip[MEMBRE3].h=192/4;
+    characterPortraitClipPositions[SECOND_TEAM_MEMBER].x = 3 * 192 / 4;
+    characterPortraitClipPositions[SECOND_TEAM_MEMBER].y = 0;
+    characterPortraitClipPositions[SECOND_TEAM_MEMBER].w = 192 / 4;
+    characterPortraitClipPositions[SECOND_TEAM_MEMBER].h = 192 / 4;
 
-    clip[MEMBRE4].x=1*192/4;
-    clip[MEMBRE4].y=0;
-    clip[MEMBRE4].w=192/4;
-    clip[MEMBRE4].h=192/4;
+    characterPortraitClipPositions[THIRD_TEAM_MEMBER].x = 2 * 192 / 4;
+    characterPortraitClipPositions[THIRD_TEAM_MEMBER].y = 0;
+    characterPortraitClipPositions[THIRD_TEAM_MEMBER].w = 192 / 4;
+    characterPortraitClipPositions[THIRD_TEAM_MEMBER].h = 192 / 4;
 
-    if(!tof)
+    characterPortraitClipPositions[FOURTH_TEAM_MEMBER].x = 1 * 192 / 4;
+    characterPortraitClipPositions[FOURTH_TEAM_MEMBER].y = 0;
+    characterPortraitClipPositions[FOURTH_TEAM_MEMBER].w = 192 / 4;
+    characterPortraitClipPositions[FOURTH_TEAM_MEMBER].h = 192 / 4;
+
+    if (characterPortraitSpriteSheetTexture == NULL)
     {
-        fprintf(stderr, "Erreur de chargement de l'image tof.png : %s\n", SDL_GetError()); // Écriture de l'erreur
+        fprintf(stderr, "An error occured during the tof.png spritesheet loading for the following reason : %s\n", SDL_GetError());
         exit(EXIT_FAILURE);
     }
-    while (cycle)
+
+    while (isWaitingInputs)
     {
-        SDL_WaitEvent(&action);
-        switch(action.type)
+        SDL_WaitEvent(&inputEvent);
+        switch (inputEvent.type)
         {
-            case SDL_QUIT :
-            cycle = 0;
+        case SDL_QUIT:
+            isWaitingInputs = false;
             exit(EXIT_SUCCESS);
             atexit(SDL_Quit);
 
-            case SDL_KEYDOWN:
-            switch (action.key.keysym.sym)
+        case SDL_KEYDOWN:
+            switch (inputEvent.key.keysym.sym)
             {
-                case SDLK_ESCAPE: //Appui sur la touche Echap, on sort du menu pour revenir au jeu
-                cycle = 0;
-                this->EmissionSonAnnulation();
+            case SDLK_ESCAPE:
+                isWaitingInputs = false;
+                this->playCancelSound();
                 break;
 
-                case SDLK_RETURN:
+            case SDLK_RETURN:
 
-                if(positionCursseur.y==positionTexte[INVENTAIRE].y)
+                if (curssorPosition.y == menuItemTextTexturePosition[INVENTORY].y)
                 {
-                    //this->EmissionSonValidation();
+                    // this->EmissionSonValidation();
                 }
-                else if(positionCursseur.y==positionTexte[EQUIPEMENT].y)
+                else if (curssorPosition.y == menuItemTextTexturePosition[EQUIPEMENTS].y)
                 {
-                    this->EmissionSonValidation();
-                    sme->AffichageEquipement(equipe, ecran, armeInventaire, casqueInventaire, cuirasseInventaire, bouclierInventaire, jambiereInventaire, obj);
-                    armeInventaire=obj->GetArmeInventaire();
-                    casqueInventaire=obj->GetCasqueInventaire();
-                    cuirasseInventaire=obj->GetCuirasseInventaire();
-                    bouclierInventaire=obj->GetBouclierInventaire();
-                    jambiereInventaire=obj->GetJambiereInventaire();
+                    this->playValidationSound();
+                    equipmentMenu->displayEquipmentMenu(team, renderer, weaponsInventory, helmetsInventory, armorsInventory, shieldInventory, bootsInventory, game);
+                    weaponsInventory = game->getWeaponsInventory();
+                    helmetsInventory = game->getHelmetsInventory();
+                    armorsInventory = game->getArmorsInevtory();
+                    shieldInventory = game->getShieldsInventory();
+                    bootsInventory = game->getBootsInventory();
                 }
-                else if(positionCursseur.y==positionTexte[ETAT].y)
+                else if (curssorPosition.y == menuItemTextTexturePosition[STATUS].y)
                 {
-                    this->EmissionSonValidation();
-                    e->AffichageEtat(equipe, ecran);
+                    this->playValidationSound();
+                    statusMenu->displayStatusMenu(team, renderer);
                 }
-                else if(positionCursseur.y==positionTexte[GROUPE].y)
+                else if (curssorPosition.y == menuItemTextTexturePosition[PARTY].y)
                 {
-                    this->EmissionSonValidation();
-                    g->AffichageGroupe(groupe, equipe, ecran, obj);
+                    this->playValidationSound();
+                    partyMenu->displayPartyMenu(party, team, renderer, game);
                 }
-                else if(positionCursseur.y==positionTexte[COMPETENCES].y)
+                else if (curssorPosition.y == menuItemTextTexturePosition[ABILITIES].y)
                 {
-                    this->EmissionSonValidation();
-
+                    this->playValidationSound();
                 }
-                else if(positionCursseur.y==positionTexte[SAUVEGARDER].y)
+                else if (curssorPosition.y == menuItemTextTexturePosition[SAVE].y)
                 {
-                    this->EmissionSonValidation();
-
+                    this->playValidationSound();
                 }
-                else if(positionCursseur.y==positionTexte[CHARGER].y)
+                else if (curssorPosition.y == menuItemTextTexturePosition[LOAD].y)
                 {
-                    this->EmissionSonValidation();
-
+                    this->playValidationSound();
                 }
-                else if(positionCursseur.y==positionTexte[OPTIONS].y)
+                else if (curssorPosition.y == menuItemTextTexturePosition[OPTIONS].y)
                 {
-                    this->EmissionSonValidation();
-
+                    this->playValidationSound();
                 }
-                else if(positionCursseur.y==positionTexte[SORTIE].y)
+                else if (curssorPosition.y == menuItemTextTexturePosition[EXIT].y)
                 {
-                    this->EmissionSonValidation();
-                    cycle=0;
+                    this->playValidationSound();
+                    isWaitingInputs = false;
                 }
                 break;
 
-                case SDLK_UP:
-                if(positionCursseur.y==positionTexte[INVENTAIRE].y)
+            case SDLK_UP:
+                if (curssorPosition.y == menuItemTextTexturePosition[INVENTORY].y)
                 {
-                    positionCursseur.y=positionTexte[SORTIE].y;
-                    j=SORTIE;
+                    curssorPosition.y = menuItemTextTexturePosition[EXIT].y;
+                    menuCurssorIndex = EXIT;
                 }
                 else
                 {
-                    positionCursseur.y=positionTexte[--j].y;
+                    curssorPosition.y = menuItemTextTexturePosition[--menuCurssorIndex].y;
                 }
-                this->EmissionSonDeplacement();
+                this->playMovementSound();
                 break;
 
-                case SDLK_DOWN:
-                if(positionCursseur.y==positionTexte[SORTIE].y)
+            case SDLK_DOWN:
+                if (curssorPosition.y == menuItemTextTexturePosition[EXIT].y)
                 {
-                    positionCursseur.y=positionTexte[INVENTAIRE].y;
-                    j=INVENTAIRE;
+                    curssorPosition.y = menuItemTextTexturePosition[INVENTORY].y;
+                    menuCurssorIndex = INVENTORY;
                 }
                 else
                 {
-                    positionCursseur.y=positionTexte[++j].y;
+                    curssorPosition.y = menuItemTextTexturePosition[++menuCurssorIndex].y;
                 }
-                this->EmissionSonDeplacement();
+                this->playMovementSound();
                 break;
             }
             break;
         }
 
-        // Collage de la surface de menu sur l'écran
-        SDL_BlitSurface(fenMenu, NULL, ecran, &positionMenu);
-        SDL_BlitSurface(ligne, NULL, ecran, &positionLigne);
-        for(i=0; i<4; i++)
-        {
-            SDL_BlitSurface(ligneHorizontale[i], NULL, ecran, &positionLigneHorizontale[i]);
-        }
-        for(i=0; i<t; i++)
-        {
-            SDL_BlitSurface(texte[i], NULL, ecran, &positionTexte[i]); /* Blit du texte */
-        }
-        for(i=0; i<taille; i++)
-        {
-            SDL_BlitSurface(texteStatPrenom[i], NULL, ecran, &positionTexteStatPrenom[i]);
-            SDL_BlitSurface(texteStatNiv[i], NULL, ecran, &positionTexteStatNiv[i]);
-            SDL_BlitSurface(texteStatPv[i], NULL, ecran, &positionTexteStatPv[i]);
-            SDL_BlitSurface(texteStatPm[i], NULL, ecran, &positionTexteStatPm[i]);
-            SDL_BlitSurface(texteStatExp[i], NULL, ecran, &positionTexteStatExp[i]);
-            SDL_BlitSurface(tof, &clip[i], ecran, &positionTof[i]);
-        }
-        SDL_BlitSurface(cursseur, NULL, ecran, &positionCursseur);
-        //Mise à jour de l'affichage
-        SDL_Flip(ecran);
+        this->displayMenuElements(menuItems, team);
     }
+}
+
+void Menu::displayMenuElements(std::vector<std::string> menuItems, std::vector<Character *> team)
+{
+    int menuElementsSize = menuItems.size();
+    SDL_SetRenderDrawColor(renderer, 180, 180, 180, SDL_ALPHA_OPAQUE);
+    SDL_RenderClear(renderer);
+
+    SDL_RenderCopy(renderer, menuTexture, NULL, &menuPosition);
+
+    for (int i = 0; i < menuElementsSize; i++)
+    {
+        SDL_RenderCopy(renderer, menuItemTextTexture[i], NULL, &menuItemTextTexturePosition[i]);
+    }
+
+    for (int i = 0; i < team.size(); i++)
+    {
+        SDL_RenderCopy(renderer, characterPortraitSpriteSheetTexture, &characterPortraitClipPositions[i], &characterPortraitSpriteSheetTexturePositions[i]);
+        SDL_RenderCopy(renderer, firstNameStatisticTextTexture[i], NULL, &firstNameStatisticTextTexturePosition[i]);
+        SDL_RenderCopy(renderer, levelStatisticTextTexture[i], NULL, &levelStatisticTextTexturePosition[i]);
+        SDL_RenderCopy(renderer, hitPointsStatisticTextTexture[i], NULL, &hitPointsStatisticTextTexturePosition[i]);
+        SDL_RenderCopy(renderer, magicPointsStatisticTextTexture[i], NULL, &magicPointsStatisticTextTexturePosition[i]);
+        SDL_RenderCopy(renderer, experienceStatisticTextTexture[i], NULL, &experienceStatisticTextTextureposition[i]);
+    }
+
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(renderer, 255, 255, 36, 70);
+    SDL_RenderFillRect(renderer, &curssorPosition);
+
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 178);
+    SDL_RenderFillRect(renderer, &linePosition);
+
+    for (int i = 0; i < 4; i++)
+    {
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 178);
+        SDL_RenderFillRect(renderer, &horizontalLinePosition[i]);
+    }
+
+    SDL_RenderPresent(renderer);
 }
