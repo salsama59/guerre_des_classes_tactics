@@ -1,0 +1,7 @@
+enum TeamMemberSlotsEnum
+{
+    FIRST_TEAM_MEMBER,
+    SECOND_TEAM_MEMBER,
+    THIRD_TEAM_MEMBER,
+    FOURTH_TEAM_MEMBER
+};
