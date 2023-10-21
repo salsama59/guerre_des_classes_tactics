@@ -275,15 +275,6 @@ void StatusMenu::displayStatusMenu(std::vector<Character *> team, SDL_Renderer *
 
     for (int i = 0; i < 5; i++)
     {
-        if (i == 0)
-        {
-            equipmentNameTextTexturesPosition[i].y = 100;
-        }
-        else
-        {
-            equipmentNameTextTexturesPosition[i].y = equipmentNameTextTexturesPosition[i - 1].y + 30;
-        }
-
         equipmentNameTextTextures[i] = SDL_CreateTextureFromSurface(renderer, TTF_RenderText_Blended(mainArialFont, equipementCategoriesTitle[i], fontColor));
         int texteEquipementWidth = 0;
         int texteEquipementHeight = 0;
@@ -291,6 +282,7 @@ void StatusMenu::displayStatusMenu(std::vector<Character *> team, SDL_Renderer *
         equipmentNameTextTexturesPosition[i].w = texteEquipementWidth;
         equipmentNameTextTexturesPosition[i].h = texteEquipementHeight;
         equipmentNameTextTexturesPosition[i].x = 325;
+        equipmentNameTextTexturesPosition[i].y = 100 + i * 30;
     }
 
     characterPortraitSpriteSheetTexture = SDL_CreateTextureFromSurface(renderer, IMG_Load("assets/spriteSheets/tof.png"));

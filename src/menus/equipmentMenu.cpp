@@ -95,18 +95,6 @@ void EquipmentMenu::displayEquipmentMenu(std::vector<Character *> team, SDL_Rend
 
     for (int i = 0; i < weaponsInventorySize; i++)
     {
-        if (i == 0)
-        {
-
-            weaponNameInventoryTextTexturePosition[i].x = 0;
-            weaponNameInventoryTextTexturePosition[i].y = 265;
-        }
-        else
-        {
-            weaponNameInventoryTextTexturePosition[i].x = 0;
-            weaponNameInventoryTextTexturePosition[i].y = weaponNameInventoryTextTexturePosition[i - 1].y + 30;
-        }
-
         inventoryWeaponsNames[i] = weaponsInventory[i]->GetName();
         damageValueArray[i] = weaponsInventory[i]->getDamage();
         sprintf(this->damageValueArray, "%d", damageValueArray[i]);
@@ -116,21 +104,12 @@ void EquipmentMenu::displayEquipmentMenu(std::vector<Character *> team, SDL_Rend
         TTF_SizeText(mainArialFont, inventoryWeaponsNames[i].c_str(), &texteNomArmeWidth, &texteNomArmeHeight);
         weaponNameInventoryTextTexturePosition[i].w = texteNomArmeWidth;
         weaponNameInventoryTextTexturePosition[i].h = texteNomArmeHeight;
+        weaponNameInventoryTextTexturePosition[i].x = 0;
+        weaponNameInventoryTextTexturePosition[i].y = 265 + i * 30;
     }
 
     for (int i = 0; i < helmetsInventorySize; i++)
     {
-        if (i == 0)
-        {
-            helmetNameStatisticTextTexturePosition[i].x = 0;
-            helmetNameStatisticTextTexturePosition[i].y = 265;
-        }
-        else
-        {
-            helmetNameStatisticTextTexturePosition[i].x = 0;
-            helmetNameStatisticTextTexturePosition[i].y = helmetNameStatisticTextTexturePosition[i - 1].y + 30;
-        }
-
         inventoryHelmetsNames[i] = helmetsInventory[i]->GetName();
         helmetNameStatisticTextTexture[i] = SDL_CreateTextureFromSurface(renderer, TTF_RenderText_Blended(mainArialFont, inventoryHelmetsNames[i].c_str(), fontColor));
         int texteNomArmureWidth = 0;
@@ -138,21 +117,12 @@ void EquipmentMenu::displayEquipmentMenu(std::vector<Character *> team, SDL_Rend
         TTF_SizeText(mainArialFont, inventoryHelmetsNames[i].c_str(), &texteNomArmureWidth, &texteNomArmureHeight);
         helmetNameStatisticTextTexturePosition[i].w = texteNomArmureWidth;
         helmetNameStatisticTextTexturePosition[i].h = texteNomArmureHeight;
+        helmetNameStatisticTextTexturePosition[i].x = 0;
+        helmetNameStatisticTextTexturePosition[i].y = 265 + i * 30;
     }
 
     for (int i = 0; i < armorsInventorySize; i++)
     {
-        if (i == 0)
-        {
-            armorNameStatisticTextTexturePosition[i].x = 0;
-            armorNameStatisticTextTexturePosition[i].y = 265;
-        }
-        else
-        {
-            armorNameStatisticTextTexturePosition[i].x = 0;
-            armorNameStatisticTextTexturePosition[i].y = armorNameStatisticTextTexturePosition[i - 1].y + 30;
-        }
-
         inventoryArmorsNames[i] = armorsInventory[i]->GetName();
         armorNameStatisticTextTexture[i] = SDL_CreateTextureFromSurface(renderer, TTF_RenderText_Blended(mainArialFont, inventoryArmorsNames[i].c_str(), fontColor));
         int texteNomCuirasseWidth = 0;
@@ -160,21 +130,12 @@ void EquipmentMenu::displayEquipmentMenu(std::vector<Character *> team, SDL_Rend
         TTF_SizeText(mainArialFont, inventoryArmorsNames[i].c_str(), &texteNomCuirasseWidth, &texteNomCuirasseHeight);
         armorNameStatisticTextTexturePosition[i].w = texteNomCuirasseWidth;
         armorNameStatisticTextTexturePosition[i].h = texteNomCuirasseHeight;
+        armorNameStatisticTextTexturePosition[i].x = 0;
+        armorNameStatisticTextTexturePosition[i].y = 265 + i * 30;
     }
 
     for (int i = 0; i < shieldsInventorySize; i++)
     {
-        if (i == 0)
-        {
-            shieldNameStatisticTextTexturePosition[i].x = 0;
-            shieldNameStatisticTextTexturePosition[i].y = 265;
-        }
-        else
-        {
-            shieldNameStatisticTextTexturePosition[i].x = 0;
-            shieldNameStatisticTextTexturePosition[i].y = shieldNameStatisticTextTexturePosition[i - 1].y + 30;
-        }
-
         inventoryShieldsNames[i] = shieldsInventory[i]->GetName();
         shieldNameStatisticTextTexture[i] = SDL_CreateTextureFromSurface(renderer, TTF_RenderText_Blended(mainArialFont, inventoryShieldsNames[i].c_str(), fontColor));
         int texteNomBouclierWidth = 0;
@@ -182,22 +143,12 @@ void EquipmentMenu::displayEquipmentMenu(std::vector<Character *> team, SDL_Rend
         TTF_SizeText(mainArialFont, inventoryShieldsNames[i].c_str(), &texteNomBouclierWidth, &texteNomBouclierHeight);
         shieldNameStatisticTextTexturePosition[i].w = texteNomBouclierWidth;
         shieldNameStatisticTextTexturePosition[i].h = texteNomBouclierHeight;
+        shieldNameStatisticTextTexturePosition[i].x = 0;
+        shieldNameStatisticTextTexturePosition[i].y = 265 + i * 30;
     }
 
     for (int i = 0; i < bootsInventorySize; i++)
     {
-        if (i == 0)
-        {
-            bootNameStatisticTextTexturePosition[i].x = 0;
-            bootNameStatisticTextTexturePosition[i].y = 265;
-        }
-        else
-        {
-
-            bootNameStatisticTextTexturePosition[i].x = 0;
-            bootNameStatisticTextTexturePosition[i].y = bootNameStatisticTextTexturePosition[i - 1].y + 30;
-        }
-
         inventoryBootsNames[i] = bootsInventory[i]->GetName();
         bootNameStatisticTextTexture[i] = SDL_CreateTextureFromSurface(renderer, TTF_RenderText_Blended(mainArialFont, inventoryBootsNames[i].c_str(), fontColor));
         int texteNomJambiereWidth = 0;
@@ -205,6 +156,8 @@ void EquipmentMenu::displayEquipmentMenu(std::vector<Character *> team, SDL_Rend
         TTF_SizeText(mainArialFont, inventoryBootsNames[i].c_str(), &texteNomJambiereWidth, &texteNomJambiereHeight);
         bootNameStatisticTextTexturePosition[i].w = texteNomJambiereWidth;
         bootNameStatisticTextTexturePosition[i].h = texteNomJambiereHeight;
+        bootNameStatisticTextTexturePosition[i].x = 0;
+        bootNameStatisticTextTexturePosition[i].y = 265 + i * 30;
     }
 
     for (int i = 0; i < teamMembersSize; i++)
@@ -226,20 +179,9 @@ void EquipmentMenu::displayEquipmentMenu(std::vector<Character *> team, SDL_Rend
 
         for (int j = 0; j < equipements.size(); j++)
         {
-            if (i == 0)
+            membersArmorNames[j] = equipements[j].GetName();
+            if (i == FIRST_TEAM_MEMBER)
             {
-                if (j == 0)
-                {
-                    memberGenericEquipmentNameStatisticTextTexturePosition[j].x = 150;
-                    memberGenericEquipmentNameStatisticTextTexturePosition[j].y = 130;
-                }
-                else if (j > 0)
-                {
-
-                    memberGenericEquipmentNameStatisticTextTexturePosition[j].x = 150;
-                    memberGenericEquipmentNameStatisticTextTexturePosition[j].y = memberGenericEquipmentNameStatisticTextTexturePosition[j - 1].y + 30;
-                }
-                membersArmorNames[j] = equipements[j].GetName();
                 memberOneArmorNameTextTexture[j] = SDL_CreateTextureFromSurface(renderer, TTF_RenderText_Blended(mainArialFont, membersArmorNames[j].c_str(), fontColor));
                 int texteStatNomArmureM0Width = 0;
                 int texteStatNomArmureM0Height = 0;
@@ -247,21 +189,8 @@ void EquipmentMenu::displayEquipmentMenu(std::vector<Character *> team, SDL_Rend
                 memberGenericEquipmentNameStatisticTextTexturePosition[j].w = texteStatNomArmureM0Width;
                 memberGenericEquipmentNameStatisticTextTexturePosition[j].h = texteStatNomArmureM0Height;
             }
-            if (i == 1)
+            if (i == SECOND_TEAM_MEMBER)
             {
-
-                if (j == 0)
-                {
-                    memberGenericEquipmentNameStatisticTextTexturePosition[j].x = 150;
-                    memberGenericEquipmentNameStatisticTextTexturePosition[j].y = 130;
-                }
-                else if (j > 0)
-                {
-                    memberGenericEquipmentNameStatisticTextTexturePosition[j].x = 150;
-                    memberGenericEquipmentNameStatisticTextTexturePosition[j].y = memberGenericEquipmentNameStatisticTextTexturePosition[j - 1].y + 30;
-                }
-
-                membersArmorNames[j] = equipements[j].GetName();
                 memberTwoArmorNameTextTexture[j] = SDL_CreateTextureFromSurface(renderer, TTF_RenderText_Blended(mainArialFont, membersArmorNames[j].c_str(), fontColor));
                 int texteStatNomArmureM1Width = 0;
                 int texteStatNomArmureM1Height = 0;
@@ -269,6 +198,8 @@ void EquipmentMenu::displayEquipmentMenu(std::vector<Character *> team, SDL_Rend
                 memberGenericEquipmentNameStatisticTextTexturePosition[j].w = texteStatNomArmureM1Width;
                 memberGenericEquipmentNameStatisticTextTexturePosition[j].h = texteStatNomArmureM1Height;
             }
+            memberGenericEquipmentNameStatisticTextTexturePosition[j].x = 150;
+            memberGenericEquipmentNameStatisticTextTexturePosition[j].y = 130 + j * 30;
         }
 
         sprintf(this->maximumHitPointValueArray, "MAX HP : %d", maximumHitPointValueArray[i]);
@@ -394,23 +325,14 @@ void EquipmentMenu::displayEquipmentMenu(std::vector<Character *> team, SDL_Rend
 
     for (int i = 0; i < 5; i++)
     {
-        if (i == 0)
-        {
-            equipmentCategoriesNameTextTexturesPosition[i].x = 0;
-            equipmentCategoriesNameTextTexturesPosition[i].y = 100;
-        }
-        else
-        {
-            equipmentCategoriesNameTextTexturesPosition[i].x = 0;
-            equipmentCategoriesNameTextTexturesPosition[i].y = equipmentCategoriesNameTextTexturesPosition[i - 1].y + 30;
-        }
-
         equipmentCategoriesNameTextTextures[i] = SDL_CreateTextureFromSurface(renderer, TTF_RenderText_Blended(mainArialFont, tableauEquip[i], fontColor));
         int texteEquipementWidth = 0;
         int texteEquipementHeight = 0;
         TTF_SizeText(mainArialFont, tableauEquip[i], &texteEquipementWidth, &texteEquipementHeight);
         equipmentCategoriesNameTextTexturesPosition[i].w = texteEquipementWidth;
         equipmentCategoriesNameTextTexturesPosition[i].h = texteEquipementHeight;
+        equipmentCategoriesNameTextTexturesPosition[i].x = 0;
+        equipmentCategoriesNameTextTexturesPosition[i].y = 100 + i * 30;
     }
 
     linePosition.x = MAXIMUM_SCREEN_WIDTH / 2;
@@ -449,23 +371,14 @@ void EquipmentMenu::displayEquipmentMenu(std::vector<Character *> team, SDL_Rend
 
     for (int i = 0; i < 2; i++)
     {
-        if (i == 0)
-        {
-            menuOptionsNameTexturePosition[i].x = (MAXIMUM_SCREEN_WIDTH + 5) / 2;
-            menuOptionsNameTexturePosition[i].y = 0;
-        }
-        else
-        {
-            menuOptionsNameTexturePosition[i].x = menuOptionsNameTexturePosition[i - 1].x + 150;
-            menuOptionsNameTexturePosition[i].y = 0;
-        }
-
         menuOptionsNameTexture[i] = SDL_CreateTextureFromSurface(renderer, TTF_RenderText_Blended(mainArialFont, tableauOption[i], fontColor));
         int optionEquipementWidth = 0;
         int optionEquipementHeight = 0;
         TTF_SizeText(mainArialFont, tableauOption[i], &optionEquipementWidth, &optionEquipementHeight);
         menuOptionsNameTexturePosition[i].w = optionEquipementWidth;
         menuOptionsNameTexturePosition[i].h = optionEquipementHeight;
+        menuOptionsNameTexturePosition[i].x = ((MAXIMUM_SCREEN_WIDTH + 5) / 2) + i * 150;
+        menuOptionsNameTexturePosition[i].y = 0;
     }
 
     characterPortraitTexturePosition.x = 0;

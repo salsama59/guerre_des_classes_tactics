@@ -133,7 +133,6 @@ void Menu::displayMainMenu(std::vector<Character *> team, std::vector<Character 
     int trueTypeFontInitializationResult = 0, menuCurssorIndex = 0, teamSize = 0;
 
     teamSize = team.size();
-    printf(" size is : %d", teamSize);
     int hitPoints[teamSize], magicPoints[teamSize], experiencePoints[teamSize], nextLevelExperiencePoints[teamSize], maximumHitPoints[teamSize], maximumMagicPoints[teamSize], levels[teamSize];
     std::string firstName[teamSize];
 
@@ -211,38 +210,11 @@ void Menu::displayMainMenu(std::vector<Character *> team, std::vector<Character 
         experienceStatisticTextTextureposition[i].h = partyStatisticTextHeight;
         experienceStatisticTextTextureposition[i].w = partyStatisticTextWidth;
 
-        if (i == FIRST_TEAM_MEMBER)
-        {
-            firstNameStatisticTextTexturePosition[i].y = 10;
-            levelStatisticTextTexturePosition[i].y = 30;
-            hitPointsStatisticTextTexturePosition[i].y = 50;
-            magicPointsStatisticTextTexturePosition[i].y = 70;
-            experienceStatisticTextTextureposition[i].y = 90;
-        }
-        else if (i == SECOND_TEAM_MEMBER)
-        {
-            firstNameStatisticTextTexturePosition[i].y = 130;
-            levelStatisticTextTexturePosition[i].y = 150;
-            hitPointsStatisticTextTexturePosition[i].y = 170;
-            magicPointsStatisticTextTexturePosition[i].y = 190;
-            experienceStatisticTextTextureposition[i].y = 210;
-        }
-        else if (i == THIRD_TEAM_MEMBER)
-        {
-            firstNameStatisticTextTexturePosition[i].y = 250;
-            levelStatisticTextTexturePosition[i].y = 270;
-            hitPointsStatisticTextTexturePosition[i].y = 290;
-            magicPointsStatisticTextTexturePosition[i].y = 310;
-            experienceStatisticTextTextureposition[i].y = 330;
-        }
-        else if (i == FOURTH_TEAM_MEMBER)
-        {
-            firstNameStatisticTextTexturePosition[i].y = 370;
-            levelStatisticTextTexturePosition[i].y = 390;
-            hitPointsStatisticTextTexturePosition[i].y = 410;
-            magicPointsStatisticTextTexturePosition[i].y = 430;
-            experienceStatisticTextTextureposition[i].y = 450;
-        }
+        firstNameStatisticTextTexturePosition[i].y = 10 + i * 120;
+        levelStatisticTextTexturePosition[i].y = 30 + i * 120;
+        hitPointsStatisticTextTexturePosition[i].y = 50 + i * 120;
+        magicPointsStatisticTextTexturePosition[i].y = 70 + i * 120;
+        experienceStatisticTextTextureposition[i].y = 90 + i * 120;
     }
 
     curssorPosition.w = 185;
@@ -259,18 +231,13 @@ void Menu::displayMainMenu(std::vector<Character *> team, std::vector<Character 
     {
         if (i == 0)
         {
-            horizontalLinePosition[i].x = MAXIMUM_SCREEN_WIDTH / 2;
-            horizontalLinePosition[i].y = MAXIMUM_SCREEN_HEIGHT / 4;
-            horizontalLinePosition[i].w = MAXIMUM_SCREEN_WIDTH / 2;
-            horizontalLinePosition[i].h = 2;
+            continue;
         }
-        else
-        {
-            horizontalLinePosition[i].x = MAXIMUM_SCREEN_WIDTH / 2;
-            horizontalLinePosition[i].y = i * (MAXIMUM_SCREEN_HEIGHT / 4);
-            horizontalLinePosition[i].w = MAXIMUM_SCREEN_WIDTH / 2;
-            horizontalLinePosition[i].h = 2;
-        }
+
+        horizontalLinePosition[i].x = MAXIMUM_SCREEN_WIDTH / 2;
+        horizontalLinePosition[i].y = i * (MAXIMUM_SCREEN_HEIGHT / 4);
+        horizontalLinePosition[i].w = MAXIMUM_SCREEN_WIDTH / 2;
+        horizontalLinePosition[i].h = 2;
     }
 
     characterPortraitSpriteSheetTexturePositions[FIRST_TEAM_MEMBER].x = (MAXIMUM_SCREEN_WIDTH / 2) + 12;
