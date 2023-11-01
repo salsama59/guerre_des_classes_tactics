@@ -1,0 +1,5 @@
+enum ResourceTypeEnum
+{
+    IMAGE,
+    SOUND
+};

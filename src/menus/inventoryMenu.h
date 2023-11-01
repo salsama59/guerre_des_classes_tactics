@@ -7,16 +7,21 @@
 #include <ft2build.h>
 #include <SDL2/SDL_ttf.h>
 #include <string>
+#include "../src/scenes/menuSceneInterface.h"
+#include "../src/dataObjects/resourcesBundle.h"
 
-class InventoryMenu : public Menu
+class InventoryMenu : public MenuSceneInterface
 {
-private:
-    void displayMenuElements();
-
 public:
-    InventoryMenu(Game &game);
+    using MenuSceneInterface::MenuSceneInterface;
+    InventoryMenu(vector<Resource *> resources, SDL_Renderer *gameRenderer);
     ~InventoryMenu();
-    void displayInventory();
+    void executeScene(SceneInputData *sceneInputData) override;
+
+protected:
+    void initializeDatas(SceneInputData *sceneInputData) override;
+    bool detectInputs(SceneInputData *sceneInputData, bool isWaitingForInput) override;
+    void renderScene(SceneInputData *sceneInputData) override;
 };
 
 #endif

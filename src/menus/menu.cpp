@@ -14,6 +14,9 @@
 #include "../enums/equipmentActionsEnum.h"
 #include "../enums/armorTypesEnum.h"
 #include "../enums/menuOptionsEnum.h"
+#include "inventoryMenu.h"
+#include "../dataObjects/inventoryBundle.h"
+#include "../dataObjects/sceneInputData.h"
 #include <string>
 #include <iostream>
 #include <vector>
@@ -125,9 +128,13 @@ void Menu::playMainMenuOpeningSound()
 void Menu::displayMainMenu(std::vector<Character *> team, std::vector<Character *> party, SDL_Renderer *renderer, std::vector<Weapon *> weaponsInventory, std::vector<Helmet *> helmetsInventory, std::vector<BodyArmor *> armorsInventory, std::vector<Shield *> shieldInventory, std::vector<Boots *> bootsInventory, Game *game)
 {
 
+    vector<Resource *> resources;
+    Resource *resource = new Resource("test", "assets/spriteSheets/tof.png", ResourceTypeEnum::IMAGE);
+    resources.push_back(resource);
     StatusMenu *statusMenu = new StatusMenu(renderer);
     EquipmentMenu *equipmentMenu = new EquipmentMenu(renderer);
     PartyMenu *partyMenu = new PartyMenu(renderer);
+    InventoryMenu *inventoryMenu = new InventoryMenu(resources, renderer);
 
     bool isWaitingInputs = true;
     int trueTypeFontInitializationResult = 0, menuCurssorIndex = 0, teamSize = 0;
@@ -306,7 +313,10 @@ void Menu::displayMainMenu(std::vector<Character *> team, std::vector<Character 
 
                 if (curssorPosition.y == menuItemTextTexturePosition[INVENTORY].y)
                 {
-                    // this->EmissionSonValidation();
+                    this->playValidationSound();
+                    InventoryBundle *inventoryBundle = new InventoryBundle(weaponsInventory, helmetsInventory, armorsInventory, shieldInventory, bootsInventory);
+                    SceneInputData *sceneInputData = new SceneInputData(party, team, inventoryBundle);
+                    inventoryMenu->executeScene(sceneInputData);
                 }
                 else if (curssorPosition.y == menuItemTextTexturePosition[EQUIPEMENTS].y)
                 {

@@ -81,13 +81,6 @@ void Game::Jouer()
     SDL_Event inputEvents;
     bool isWaitingInputs = true;
 
-    SDL_SetRenderDrawColor(gameRenderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
-    SDL_RenderClear(gameRenderer);
-
-    SDL_SetRenderDrawColor(gameRenderer, 0, 255, 0, SDL_ALPHA_OPAQUE);
-    SDL_RenderFillRect(gameRenderer, &greenRectanglePosition);
-    SDL_RenderPresent(gameRenderer);
-
     while (isWaitingInputs)
     {
         SDL_WaitEvent(&inputEvents);
